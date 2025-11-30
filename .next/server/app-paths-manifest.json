@@ -1,3 +1,6 @@
 {
-  "/api/admin/attendance-live/route": "app/api/admin/attendance-live/route.js"
+  "/api/student/login/route": "app/api/student/login/route.js",
+  "/api/student/dashboard/route": "app/api/student/dashboard/route.js",
+  "/page": "app/page.js",
+  "/student/page": "app/student/page.js"
 }
