@@ -1,0 +1,272 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/admin/attendance-reports",
+      "regex": "^/admin/attendance\\-reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/attendance\\-reports(?:/)?$"
+    },
+    {
+      "page": "/admin/live-attendance",
+      "regex": "^/admin/live\\-attendance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/live\\-attendance(?:/)?$"
+    },
+    {
+      "page": "/admin/rfid-display",
+      "regex": "^/admin/rfid\\-display(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/rfid\\-display(?:/)?$"
+    },
+    {
+      "page": "/admin/teacher-attendance",
+      "regex": "^/admin/teacher\\-attendance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/teacher\\-attendance(?:/)?$"
+    },
+    {
+      "page": "/api/admin/attendance",
+      "regex": "^/api/admin/attendance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/attendance(?:/)?$"
+    },
+    {
+      "page": "/api/admin/attendance-live",
+      "regex": "^/api/admin/attendance\\-live(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/attendance\\-live(?:/)?$"
+    },
+    {
+      "page": "/api/admin/attendance-reports",
+      "regex": "^/api/admin/attendance\\-reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/attendance\\-reports(?:/)?$"
+    },
+    {
+      "page": "/api/admin/check-rfid",
+      "regex": "^/api/admin/check\\-rfid(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/check\\-rfid(?:/)?$"
+    },
+    {
+      "page": "/api/admin/diagnostics",
+      "regex": "^/api/admin/diagnostics(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/diagnostics(?:/)?$"
+    },
+    {
+      "page": "/api/admin/login",
+      "regex": "^/api/admin/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/login(?:/)?$"
+    },
+    {
+      "page": "/api/admin/settings",
+      "regex": "^/api/admin/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/settings(?:/)?$"
+    },
+    {
+      "page": "/api/admin/stats",
+      "regex": "^/api/admin/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/stats(?:/)?$"
+    },
+    {
+      "page": "/api/admin/students",
+      "regex": "^/api/admin/students(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/students(?:/)?$"
+    },
+    {
+      "page": "/api/admin/teacher-attendance",
+      "regex": "^/api/admin/teacher\\-attendance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/teacher\\-attendance(?:/)?$"
+    },
+    {
+      "page": "/api/admin/update-teacher-rfid",
+      "regex": "^/api/admin/update\\-teacher\\-rfid(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/update\\-teacher\\-rfid(?:/)?$"
+    },
+    {
+      "page": "/api/admissions",
+      "regex": "^/api/admissions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admissions(?:/)?$"
+    },
+    {
+      "page": "/api/auth/login",
+      "regex": "^/api/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/login(?:/)?$"
+    },
+    {
+      "page": "/api/debug/database",
+      "regex": "^/api/debug/database(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/database(?:/)?$"
+    },
+    {
+      "page": "/api/debug/env",
+      "regex": "^/api/debug/env(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/env(?:/)?$"
+    },
+    {
+      "page": "/api/grades",
+      "regex": "^/api/grades(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/grades(?:/)?$"
+    },
+    {
+      "page": "/api/health/supabase",
+      "regex": "^/api/health/supabase(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/health/supabase(?:/)?$"
+    },
+    {
+      "page": "/api/journal",
+      "regex": "^/api/journal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/journal(?:/)?$"
+    },
+    {
+      "page": "/api/parent/login",
+      "regex": "^/api/parent/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/login(?:/)?$"
+    },
+    {
+      "page": "/api/student/dashboard",
+      "regex": "^/api/student/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/student/dashboard(?:/)?$"
+    },
+    {
+      "page": "/api/student/login",
+      "regex": "^/api/student/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/student/login(?:/)?$"
+    },
+    {
+      "page": "/api/student/update-profile",
+      "regex": "^/api/student/update\\-profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/student/update\\-profile(?:/)?$"
+    },
+    {
+      "page": "/api/students",
+      "regex": "^/api/students(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/students(?:/)?$"
+    },
+    {
+      "page": "/api/students/update-rfid",
+      "regex": "^/api/students/update\\-rfid(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/students/update\\-rfid(?:/)?$"
+    },
+    {
+      "page": "/api/teacher/login",
+      "regex": "^/api/teacher/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/teacher/login(?:/)?$"
+    },
+    {
+      "page": "/api/teacher/stats",
+      "regex": "^/api/teacher/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/teacher/stats(?:/)?$"
+    },
+    {
+      "page": "/guardian",
+      "regex": "^/guardian(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/guardian(?:/)?$"
+    },
+    {
+      "page": "/parent",
+      "regex": "^/parent(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/parent(?:/)?$"
+    },
+    {
+      "page": "/student",
+      "regex": "^/student(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/student(?:/)?$"
+    },
+    {
+      "page": "/teacher",
+      "regex": "^/teacher(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/teacher(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

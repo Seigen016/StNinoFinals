@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/live-attendance/layout,_N_T_/admin/live-attendance/page,_N_T_/admin/live-attendance"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/admin/live-attendance/__PAGE__",
+    "/admin/live-attendance",
+    "/admin",
+    "/_index",
+    "/_head"
+  ]
+}
