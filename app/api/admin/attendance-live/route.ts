@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendSms } from '@/lib/notifications'
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { NextResponse } from 'next/server'
 
 // Timeout mode tracker: stores expiration timestamp for timeout mode
 // Format: Map<timestamp, expirationTime>
@@ -466,7 +465,7 @@ export async function POST(request: Request) {
             error: 'Student ID or RFID Card is required',
             records: [],
           },
-          { 
+          {
             status: 200, // Return 200 to prevent frontend crash, but include error in response
             headers: {
               'Content-Type': 'application/json',
@@ -668,8 +667,30 @@ export async function POST(request: Request) {
         console.error('Error checking existing records:', checkError)
       }
 
+      // Check if student has already timed in and/or timed out today
+      const hasTimeIn = todayRecords.some((r: any) => 
+        r.scan_type === 'timein' || r.scan_type === 'time_in' || r.time_in
+      )
+      const hasTimeOut = todayRecords.some((r: any) => 
+        r.scan_type === 'timeout' || r.scan_type === 'time_out' || r.time_out
+      )
+
+      // If student has already timed in AND timed out today, reject the scan
+      if (hasTimeIn && hasTimeOut) {
+        console.log('⚠️ Student has already timed in and out today')
+        return NextResponse.json({
+          success: false,
+          message: 'You have completed your attendance for today.',
+          error: 'Already completed attendance for today',
+          hasTimeIn: true,
+          hasTimeOut: true,
+        }, {
+          status: 200,
+          headers: postHeaders,
+        })
+      }
+
       // Determine scan type
-      // ALWAYS record as "timein" by default, unless timeout mode is active
       const currentTime = new Date().toISOString()
       let scanType: 'timein' | 'timeout' = 'timein'
       let timeIn = null
@@ -678,25 +699,42 @@ export async function POST(request: Request) {
       // Check if timeout mode is active (button was clicked in display page)
       const timeoutModeActive = isTimeoutModeActive()
       
-      if (timeoutModeActive) {
-        // Timeout mode is active - record as timeout
+      if (hasTimeIn && !hasTimeOut) {
+        // Student has timed in but not timed out - force timeout
         scanType = 'timeout'
         timeOut = currentTime
         
         // Find the most recent time in record for this student today
-        if (todayRecords && todayRecords.length > 0) {
-          const timeInRecord = todayRecords
-            .filter((r: any) => r.scan_type === 'timein' || r.scan_type === 'time_in')
-            .sort((a: any, b: any) => new Date(b.scan_time).getTime() - new Date(a.scan_time).getTime())[0]
-          
-          if (timeInRecord) {
-            timeIn = timeInRecord.time_in || timeInRecord.scan_time
-          }
+        const timeInRecord = todayRecords
+          .filter((r: any) => r.scan_type === 'timein' || r.scan_type === 'time_in')
+          .sort((a: any, b: any) => new Date(b.scan_time).getTime() - new Date(a.scan_time).getTime())[0]
+        
+        if (timeInRecord) {
+          timeIn = timeInRecord.time_in || timeInRecord.scan_time
         }
         
-        console.log('⏰ Timeout mode active - recording as timeout')
+        console.log('⏰ Student already timed in today - forcing timeout')
+      } else if (timeoutModeActive && !hasTimeIn) {
+        // Timeout mode active but no time in yet - ignore timeout mode and record as time in
+        scanType = 'timein'
+        timeIn = currentTime
+        console.log('⚠️ Timeout mode active but no time in yet - recording as time in')
+      } else if (timeoutModeActive && hasTimeIn) {
+        // Timeout mode active and has time in - record as timeout
+        scanType = 'timeout'
+        timeOut = currentTime
+        
+        const timeInRecord = todayRecords
+          .filter((r: any) => r.scan_type === 'timein' || r.scan_type === 'time_in')
+          .sort((a: any, b: any) => new Date(b.scan_time).getTime() - new Date(a.scan_time).getTime())[0]
+        
+        if (timeInRecord) {
+          timeIn = timeInRecord.time_in || timeInRecord.scan_time
+        }
+        
+        console.log('⏰ Timeout mode active with existing time in - recording as timeout')
       } else {
-        // Always record as time in (default behavior)
+        // Default: record as time in
         scanType = 'timein'
         timeIn = currentTime
         console.log('✅ Recording as time in (default)')

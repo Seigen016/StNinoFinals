@@ -522,7 +522,7 @@ void sendScanToServer(String rfidCard) {
   if (httpCode > 0) {
     String response = http.getString();
     response.trim();
-    
+
     Serial.println("Response: " + response);
     
     // Check if response is valid JSON

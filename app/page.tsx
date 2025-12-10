@@ -2,14 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -18,8 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { GraduationCap, Users, BookOpen, Award, Phone, Mail, MapPin, Menu, X } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Award, BookOpen, GraduationCap, Mail, MapPin, Menu, Phone, Users, X } from "lucide-react"
+import Image from "next/image"
+import { useState } from "react"
 
 export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false)
@@ -128,7 +128,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+    <div className="relative min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 transition-all scroll-smooth">
       {/* Loading Overlay */}
       {isLoggingIn && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -140,7 +140,7 @@ export default function HomePage() {
         </div>
       )}
       {/* Header */}
-      <header className="bg-white shadow-md border-b-4 border-red-800">
+      <header className="bg-white shadow-md border-b-4 border-red-800 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">

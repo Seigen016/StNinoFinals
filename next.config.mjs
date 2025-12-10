@@ -9,6 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Enable Turbopack (default in Next.js 16)
+  turbopack: {},
   // Reduce bundle size
   webpack: (config, { isServer }) => {
     if (!isServer) {

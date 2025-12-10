@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import { NextResponse } from 'next/server'
 
 const buildMockStudent = (email: string) => ({
   id: 0,
@@ -12,6 +12,7 @@ const buildMockStudent = (email: string) => ({
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
+    const emailLower = email.toLowerCase().trim()
 
     if (!email || !password) {
       return NextResponse.json(
@@ -43,7 +44,6 @@ export async function POST(request: Request) {
     }
 
     // Query the students table for a matching email (case-insensitive)
-    const emailLower = email.toLowerCase().trim()
     
     const { data: students, error } = await supabaseClient
       .from('students')
