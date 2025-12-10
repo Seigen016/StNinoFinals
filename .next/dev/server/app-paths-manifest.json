@@ -1,0 +1,14 @@
+{
+  "/admin/attendance-reports/page": "app/admin/attendance-reports/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/teacher-attendance/page": "app/admin/teacher-attendance/page.js",
+  "/api/admin/attendance-live/route": "app/api/admin/attendance-live/route.js",
+  "/api/admin/attendance-reports/route": "app/api/admin/attendance-reports/route.js",
+  "/api/admin/attendance/route": "app/api/admin/attendance/route.js",
+  "/api/admin/login/route": "app/api/admin/login/route.js",
+  "/api/admin/settings/route": "app/api/admin/settings/route.js",
+  "/api/admin/stats/route": "app/api/admin/stats/route.js",
+  "/api/admin/students/route": "app/api/admin/students/route.js",
+  "/api/admin/teacher-attendance/route": "app/api/admin/teacher-attendance/route.js",
+  "/page": "app/page.js"
+}

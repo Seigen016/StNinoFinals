@@ -31,20 +31,23 @@
 #include <MFRC522.h>
 #include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
+#include <WiFiManager.h>
 
 // WiFi Credentials
-const char* ssid = "PLDTHOMEFIBRcb1f0";
-const char* password = "PLDTWIFIf3p4u";
+// const char* ssid = "KoyaEmer";
+// const char* password = "Kyle0950";
 
 // Server URL Configuration
 // Switch between LOCAL (faster) and VERCEL (production) by uncommenting the one you want
 
 // LOCAL SERVER (FASTER - for testing/development)
 // Make sure your Next.js dev server is running on port 3000
-const char* serverURL = "http://192.168.1.9:3000/api/admin/attendance-live";
+//http://192.168.50.244:3000/ kay kyle
+//http://192.168.1.9:3000/
+// const char* serverURL = "http://192.168.50.204:3000/api/admin/attendance-live";
 
 // VERCEL DEPLOYMENT (for production/remote access)
-// const char* serverURL = "https://migrate-eight.vercel.app/api/admin/attendance-live";
+const char* serverURL = "https://stnino.vercel.app/api/admin/attendance-live";
 
 // RC522 Pins
 #define SS_PIN 5
@@ -64,7 +67,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 // Variables
 String lastCardUID = "";
 unsigned long lastScanTime = 0;
-const unsigned long scanInterval = 1000; // 1 second between scans (reduced from 2s)
+const unsigned long scanInterval = 300; // 300ms between scans (faster response)
 bool isConnected = false;
 bool rc522Working = false;
 
@@ -135,6 +138,7 @@ void setup() {
     mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max);
     Serial.println("Antenna gain set to maximum");
   }
+
   
   // Connect to WiFi
   connectToWiFi();
@@ -170,15 +174,13 @@ void loop() {
   // CONTINUOUS CARD DETECTION - Optimized for speed
   // Check for cards with minimal delay
   if (!mfrc522.PICC_IsNewCardPresent()) {
-    // No card detected, continue loop (reduced delay for faster scanning)
-    delay(5); // Reduced from 10ms to 5ms
+    // No card detected, continue loop immediately
     return;
   }
   
   // Card detected! Now try to read it
   if (!mfrc522.PICC_ReadCardSerial()) {
-    // Failed to read, try again (reduced delay)
-    delay(5); // Reduced from 10ms to 5ms
+    // Failed to read, try again immediately
     return;
   }
   
@@ -230,10 +232,10 @@ void loop() {
   // Send to server
   sendScanToServer(cardUID);
   
-  // Halt card and stop crypto (reduced delay for faster response)
+  // Halt card and stop crypto
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
-  delay(200); // Reduced from 500ms to 200ms
+  delay(100); // Minimal delay for card reset
   
   // Reset display
   lcd.clear();
@@ -242,138 +244,150 @@ void loop() {
   lcd.setCursor(0, 1);
   lcd.print("Scan RFID Card");
 }
+// ----------------------------
+// UPDATED WIFI MANAGER
+// ----------------------------
+// void connectToWiFi() {
+//   Serial.println();
+//   Serial.println("========================================");
+//   Serial.println("WIFI MANAGER");
+//   Serial.println("========================================");
 
+//   lcd.clear();
+//   lcd.setCursor(0, 0);
+//   lcd.print("Connecting WiFi");
+//   lcd.setCursor(0, 1);
+//   lcd.print("Please wait...");
+
+//   WiFi.disconnect(true);
+//   delay(200);
+
+//   WiFi.mode(WIFI_STA);
+//   WiFi.setHostname("ESP32-RFID-Scanner");
+
+//   Serial.print("Connecting to SSID: ");
+//   Serial.println(ssid);
+
+//   WiFi.begin(ssid, password);
+
+//   int attempts = 0;
+//   const int maxAttempts = 30; // ~15 seconds
+
+//   while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+//     delay(500);
+//     Serial.print(".");
+//     attempts++;
+
+//     if (attempts % 5 == 0) {
+//       Serial.println();
+//       Serial.print("Attempt ");
+//       Serial.print(attempts);
+//       Serial.print("/");
+//       Serial.println(maxAttempts);
+//       printWiFiStatus();
+//     }
+//   }
+
+//   Serial.println();
+//   Serial.println("========================================");
+
+//   if (WiFi.status() == WL_CONNECTED) {
+//     isConnected = true;
+
+//     Serial.println("✅ WIFI CONNECTED!");
+//     Serial.print("IP: ");
+//     Serial.println(WiFi.localIP());
+//     Serial.print("Signal: ");
+//     Serial.print(WiFi.RSSI());
+//     Serial.println(" dBm");
+//     Serial.println("========================================");
+
+//     lcd.clear();
+//     lcd.setCursor(0, 0);
+//     lcd.print("WiFi Connected");
+
+//     String ipStr = WiFi.localIP().toString();
+//     if (ipStr.length() > 16)
+//       ipStr = ipStr.substring(0, 13) + "...";
+
+//     lcd.setCursor(0, 1);
+//     lcd.print(ipStr);
+
+//     delay(2000);
+//   } else {
+//     isConnected = false;
+
+//     Serial.println("❌ WIFI FAILED!");
+//     printWiFiStatus();
+//     Serial.println("========================================");
+
+//     lcd.clear();
+//     lcd.setCursor(0, 0);
+//     lcd.print("WiFi Failed!");
+//     lcd.setCursor(0, 1);
+//     lcd.print("Check Serial");
+
+//     delay(3000);
+//   }
+// }
 void connectToWiFi() {
   Serial.println();
   Serial.println("========================================");
-  Serial.println("WiFi Connection Debug");
+  Serial.println("WIFI MANAGER MODE");
   Serial.println("========================================");
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-  Serial.print("Password: ");
-  Serial.println(password ? "***SET***" : "NOT SET");
-  
+
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Connecting WiFi");
+  lcd.print("WiFi Setup");
   lcd.setCursor(0, 1);
-  lcd.print("Please wait...");
-  
-  // Disconnect any existing connection
-  WiFi.disconnect(true);
-  delay(100);
-  
-  // Set WiFi mode to Station (client)
-  WiFi.mode(WIFI_STA);
-  
-  // Set hostname for easier identification
-  WiFi.setHostname("ESP32-RFID-Scanner");
-  
-  // Begin connection
-  Serial.println("Starting WiFi connection...");
-  WiFi.begin(ssid, password);
-  
-  // Wait for connection with detailed status reporting
-  int attempts = 0;
-  int maxAttempts = 30; // 15 seconds total (30 * 500ms)
-  
-  Serial.println("Waiting for connection...");
-  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-    
-    // Print status every 5 attempts (2.5 seconds)
-    if (attempts % 5 == 0) {
-      Serial.println();
-      Serial.print("Attempt ");
-      Serial.print(attempts);
-      Serial.print("/");
-      Serial.print(maxAttempts);
-      Serial.print(" - Status: ");
-      printWiFiStatus();
-    }
-  }
-  
-  Serial.println();
-  Serial.println("========================================");
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    isConnected = true;
-    Serial.println("✅ WiFi CONNECTED!");
+  lcd.print("Starting...");
+
+  WiFiManager wm;
+
+  // Para hindi sya maghang habang nag se-setup
+  wm.setTimeout(180); // 3 minutes
+
+  // Access Point name
+  bool res = wm.autoConnect("ESP32-RFID-Setup");
+
+  if (!res) {
+    Serial.println("❌ Failed to connect!");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi Failed!");
+    delay(3000);
+    ESP.restart();
+  } else {
+    Serial.println("✅ WiFi Connected!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
-    Serial.print("Gateway: ");
-    Serial.println(WiFi.gatewayIP());
-    Serial.print("Subnet: ");
-    Serial.println(WiFi.subnetMask());
-    Serial.print("RSSI (Signal): ");
-    Serial.print(WiFi.RSSI());
-    Serial.println(" dBm");
-    Serial.print("MAC Address: ");
-    Serial.println(WiFi.macAddress());
-    Serial.println("========================================");
-    
+
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("WiFi Connected");
     lcd.setCursor(0, 1);
-    String ipStr = WiFi.localIP().toString();
-    if (ipStr.length() > 16) {
-      ipStr = ipStr.substring(0, 13) + "...";
-    }
-    lcd.print(ipStr);
+
+    String ip = WiFi.localIP().toString();
+    if (ip.length() > 16) ip = ip.substring(0, 13) + "...";
+
+    lcd.print(ip);
     delay(2000);
-  } else {
-    isConnected = false;
-    Serial.println("❌ WiFi CONNECTION FAILED!");
-    Serial.print("Final Status: ");
-    printWiFiStatus();
-    Serial.println("========================================");
-    Serial.println("Troubleshooting:");
-    Serial.println("1. Check SSID and password are correct");
-    Serial.println("2. Ensure WiFi router is powered on");
-    Serial.println("3. Check signal strength (move closer)");
-    Serial.println("4. Try disconnecting USB and using battery");
-    Serial.println("5. Check if router allows new devices");
-    Serial.println("6. USB power might be insufficient - try external power");
-    Serial.println("========================================");
-    
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("WiFi Failed!");
-    lcd.setCursor(0, 1);
-    lcd.print("Check Serial");
-    delay(3000);
   }
 }
+
 
 void printWiFiStatus() {
   wl_status_t status = WiFi.status();
   switch (status) {
-    case WL_IDLE_STATUS:
-      Serial.println("IDLE - WiFi is in process of changing between states");
-      break;
-    case WL_NO_SSID_AVAIL:
-      Serial.println("NO SSID AVAIL - Configured SSID cannot be reached");
-      break;
-    case WL_SCAN_COMPLETED:
-      Serial.println("SCAN COMPLETED - Networks scan completed");
-      break;
-    case WL_CONNECTED:
-      Serial.println("CONNECTED - Successfully connected to WiFi");
-      break;
-    case WL_CONNECT_FAILED:
-      Serial.println("CONNECT FAILED - Password is incorrect");
-      break;
-    case WL_CONNECTION_LOST:
-      Serial.println("CONNECTION LOST - Connection was lost");
-      break;
-    case WL_DISCONNECTED:
-      Serial.println("DISCONNECTED - WiFi is disconnected");
-      break;
+    case WL_IDLE_STATUS: Serial.println("IDLE"); break;
+    case WL_NO_SSID_AVAIL: Serial.println("NO SSID AVAILABLE"); break;
+    case WL_SCAN_COMPLETED: Serial.println("SCAN COMPLETED"); break;
+    case WL_CONNECTED: Serial.println("CONNECTED"); break;
+    case WL_CONNECT_FAILED: Serial.println("CONNECT FAILED"); break;
+    case WL_CONNECTION_LOST: Serial.println("CONNECTION LOST"); break;
+    case WL_DISCONNECTED: Serial.println("DISCONNECTED"); break;
     default:
-      Serial.print("UNKNOWN STATUS: ");
+      Serial.print("UNKNOWN: ");
       Serial.println(status);
       break;
   }
@@ -408,13 +422,13 @@ void sendScanToServer(String rfidCard) {
   if (!httpInitialized) {
     if (isLocal) {
       // HTTP for local server (faster, no SSL overhead)
-      regularClient.setTimeout(5000); // 5 seconds for local (very fast)
-      http.setTimeout(5000);
+      regularClient.setTimeout(3000); // 3 seconds for local (faster)
+      http.setTimeout(3000);
     } else {
       // HTTPS for Vercel
       secureClient.setInsecure(); // Skip certificate validation
-      secureClient.setTimeout(10000); // 10 seconds for remote
-      http.setTimeout(10000);
+      secureClient.setTimeout(7000); // 7 seconds for remote (reduced)
+      http.setTimeout(7000);
     }
     http.setReuse(true); // Enable connection reuse for faster requests
     httpInitialized = true;
@@ -427,9 +441,9 @@ void sendScanToServer(String rfidCard) {
   
   Serial.println("Connecting to: " + url);
   
-  // Begin connection with retry (increased attempts for reliability)
+  // Begin connection with retry
   bool connected = false;
-  int maxAttempts = isLocal ? 3 : 2; // Increased to 3 attempts for local
+  int maxAttempts = isLocal ? 2 : 1; // Reduced attempts for speed
   Serial.println("Attempting to connect to server...");
   
   for (int attempt = 0; attempt < maxAttempts; attempt++) {
@@ -441,7 +455,7 @@ void sendScanToServer(String rfidCard) {
     
     // Close any existing connection first
     http.end();
-    delay(100);
+    delay(50);
     
     // Use appropriate client based on URL
     bool beginResult = isLocal 
@@ -457,8 +471,8 @@ void sendScanToServer(String rfidCard) {
       Serial.print(attempt + 1);
       Serial.println(" failed");
       if (attempt < maxAttempts - 1) {
-        Serial.println("Retrying in 500ms...");
-        delay(500);
+        Serial.println("Retrying in 200ms...");
+        delay(200);
       }
     }
   }
@@ -558,7 +572,7 @@ void sendScanToServer(String rfidCard) {
           lcd.print("Recorded");
         }
         
-        delay(2000); // Reduced from 3000ms to 2000ms for faster next scan
+        delay(1200); // Reduced to 1.2 seconds for faster scanning
       } else {
         // Error from server
         String errorMsg = "Error";
@@ -609,7 +623,7 @@ void sendScanToServer(String rfidCard) {
             lcd.print(line2);
           }
         }
-        delay(3000); // Reduced from 5000ms to 3000ms
+        delay(1500); // Reduced to 1.5 seconds for faster recovery
       }
     } else {
       Serial.println("========================================");
@@ -632,7 +646,7 @@ void sendScanToServer(String rfidCard) {
       lcd.print("Invalid Response");
       lcd.setCursor(0, 1);
       lcd.print("Check Serial");
-      delay(3000);
+      delay(1500);
     }
   } else {
     // HTTP Error Code -1 usually means connection failed
@@ -784,13 +798,10 @@ void sendScanToServer(String rfidCard) {
     } else {
       lcd.print("Code: " + String(httpCode));
     }
-    delay(3000); // Increased to 3 seconds for error messages
+    delay(1500); // Reduced to 1.5 seconds for faster recovery
   }
   
   // End HTTP request but keep client connection for reuse
   http.end();
   // Note: We keep the client connection alive for faster next request
-  
-  // Minimal delay before next operation
-  delay(50); // Reduced from 100ms to 50ms
 }

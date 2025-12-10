@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   try {
@@ -15,15 +15,20 @@ export async function GET(request: Request) {
     
     const admin = getSupabaseAdmin()
     
-    // Calculate date range (default: last 30 days)
-    const end = endDate ? new Date(endDate) : new Date()
-    const start = startDate ? new Date(startDate) : new Date()
-    if (!startDate) {
-      start.setDate(start.getDate() - 30) // Default to 30 days ago
-    }
+    // Calculate date range (default: last 30 days) - Manila timezone
+    // For Manila (UTC+8), we need to query from start of day to end of day in UTC
+    const startDateStr = startDate || (() => {
+      const d = new Date()
+      d.setDate(d.getDate() - 30)
+      return d.toISOString().split('T')[0]
+    })()
+    const endDateStr = endDate || new Date().toISOString().split('T')[0]
     
-    const startISO = start.toISOString()
-    const endISO = end.toISOString()
+    // Convert Manila local date to UTC range
+    // Start: YYYY-MM-DD 00:00:00 Manila = YYYY-MM-DD-1 16:00:00 UTC
+    // End: YYYY-MM-DD 23:59:59 Manila = YYYY-MM-DD 15:59:59 UTC
+    const startISO = `${startDateStr}T00:00:00.000Z`
+    const endISO = `${endDateStr}T23:59:59.999Z`
     
     console.log('🔍 Querying students...')
     // Fetch all students
@@ -66,7 +71,7 @@ export async function GET(request: Request) {
       .select('*')
       .gte('scan_time', startISO)
       .lte('scan_time', endISO)
-      .order('scan_time', { ascending: true })
+      .order('scan_time', { ascending: false })
     
     if (attendanceError) {
       console.error('❌ Error fetching attendance records:', attendanceError)
@@ -79,7 +84,7 @@ export async function GET(request: Request) {
         { status: 200 }
       )
     }
-    
+    console.log(allAttendanceRecords.map((r) => r.scan_time));
     console.log(`✅ Found ${allAttendanceRecords?.length || 0} attendance records`)
     
     // Build student map for quick lookup
@@ -150,8 +155,13 @@ export async function GET(request: Request) {
       
       studentStats[studentKey].records.push(record)
       
-      // Determine status
-      const scanDate = new Date(record.scan_time).toISOString().split('T')[0] // YYYY-MM-DD
+      // Determine status - Use Manila timezone to get correct date
+      const scanDateTime = new Date(record.scan_time)
+      const manilaDate = new Date(scanDateTime.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+      const year = manilaDate.getFullYear()
+      const month = String(manilaDate.getMonth() + 1).padStart(2, '0')
+      const day = String(manilaDate.getDate()).padStart(2, '0')
+      const scanDate = `${year}-${month}-${day}` // YYYY-MM-DD in Manila time
       const status = (record.status || 'Present').toLowerCase()
       const scanType = (record.scan_type || 'timein').toLowerCase()
       
@@ -233,8 +243,8 @@ export async function GET(request: Request) {
         students: studentList,
         selectedStudent: selectedStudentData,
         dateRange: {
-          start: startISO,
-          end: endISO,
+          start: startDateStr,
+          end: endDateStr,
         },
         filters: {
           gradeLevels: gradeLevels.sort(),

@@ -1,3 +1,4 @@
+import { Database } from '@/database.types'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -8,7 +9,7 @@ export function getSupabaseAdmin(): SupabaseClient {
     throw new Error('Missing Supabase admin env. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (server-only).')
   }
   
-  return createClient(supabaseUrl as string, serviceRoleKey as string, {
+  return createClient<Database>(supabaseUrl as string, serviceRoleKey as string, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

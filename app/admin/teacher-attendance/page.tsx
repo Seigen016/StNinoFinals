@@ -1,24 +1,19 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import Image from "next/image"
-import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   ArrowLeft,
-  Calendar,
-  BarChart3,
-  Users,
-  TrendingUp,
-  RefreshCcw,
   Download,
+  RefreshCcw
 } from "lucide-react"
+import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
 
 interface Teacher {
   teacherId: string
@@ -486,7 +481,7 @@ export default function TeacherAttendancePage() {
                         <TableHead className="text-center">Total Days</TableHead>
                         <TableHead className="text-center">Present</TableHead>
                         <TableHead className="text-center">%</TableHead>
-                        {dateRange.slice(0, 20).map((date) => (
+                        {dateRange.map((date) => (
                           <TableHead key={date} className="text-center min-w-[80px]">
                             {formatDate(date)}
                           </TableHead>
@@ -513,7 +508,7 @@ export default function TeacherAttendancePage() {
                               {teacher.percentage}%
                             </Badge>
                           </TableCell>
-                          {dateRange.slice(0, 20).map((date) => {
+                          {dateRange.map((date) => {
                             const code = teacher.dailyAttendance[date] || '-'
                             return (
                               <TableCell key={date} className="text-center">

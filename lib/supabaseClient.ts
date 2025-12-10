@@ -1,4 +1,5 @@
 // lib/supabaseClient.ts
+import { Database } from '@/database.types'
 import { createClient } from '@supabase/supabase-js'
 
 // Get environment variables
@@ -11,7 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // Optional: Create a client with service role for admin operations
 // DO NOT expose this in client-side code

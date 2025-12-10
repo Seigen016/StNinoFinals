@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   try {
@@ -10,15 +10,17 @@ export async function GET(request: Request) {
     
     const admin = getSupabaseAdmin()
     
-    // Calculate date range (default: last 30 days)
-    const end = endDateParam ? new Date(endDateParam) : new Date()
-    const start = startDate ? new Date(startDate) : new Date()
-    if (!startDate) {
-      start.setDate(start.getDate() - 30) // Default to 30 days ago
-    }
+    // Calculate date range (default: last 30 days) - Manila timezone
+    const startDateStr = startDate || (() => {
+      const d = new Date()
+      d.setDate(d.getDate() - 30)
+      return d.toISOString().split('T')[0]
+    })()
+    const endDateStr = endDateParam || new Date().toISOString().split('T')[0]
     
-    const startISO = start.toISOString()
-    const endISO = end.toISOString()
+    // Convert Manila local date to UTC range
+    const startISO = `${startDateStr}T00:00:00.000Z`
+    const endISO = `${endDateStr}T23:59:59.999Z`
     
     // Fetch all teachers
     const { data: teachers, error: teachersError } = await admin
@@ -161,8 +163,13 @@ export async function GET(request: Request) {
       
       teacherStats[teacherKey].records.push(record)
       
-      // Determine status
-      const scanDate = new Date(record.scan_time).toISOString().split('T')[0] // YYYY-MM-DD
+      // Determine status - Use Manila timezone to get correct date
+      const scanDateTime = new Date(record.scan_time)
+      const manilaDate = new Date(scanDateTime.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+      const year = manilaDate.getFullYear()
+      const month = String(manilaDate.getMonth() + 1).padStart(2, '0')
+      const day = String(manilaDate.getDate()).padStart(2, '0')
+      const scanDate = `${year}-${month}-${day}` // YYYY-MM-DD in Manila time
       const status = record.status || 'Present'
       const scanType = record.scan_type || 'timein'
       
@@ -230,8 +237,8 @@ export async function GET(request: Request) {
         teachers: teacherList,
         selectedTeacher: selectedTeacherData,
         dateRange: {
-          start: startISO,
-          end: endISO,
+          start: startDateStr,
+          end: endDateStr,
         },
       },
     }, { status: 200 })

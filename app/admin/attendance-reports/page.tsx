@@ -1,24 +1,19 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   ArrowLeft,
-  Calendar,
-  BarChart3,
-  Users,
-  TrendingUp,
-  RefreshCcw,
   Download,
-  FileSpreadsheet,
+  RefreshCcw
 } from "lucide-react"
+import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
 
 interface Student {
   studentId: string
@@ -74,6 +69,7 @@ export default function AttendanceReportsPage() {
     start.setDate(start.getDate() - 30)
     setStartDate(start.toISOString().split('T')[0])
     setEndDate(end.toISOString().split('T')[0])
+    
   }, [])
 
   const fetchData = async () => {
@@ -134,7 +130,7 @@ export default function AttendanceReportsPage() {
     const dates: string[] = []
     const start = new Date(data.dateRange.start)
     const end = new Date(data.dateRange.end)
-    
+    console.log(`start date: ${start}, end date: ${end}`);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d).toISOString().split('T')[0])
     }
@@ -573,7 +569,7 @@ export default function AttendanceReportsPage() {
                         <TableHead className="text-center">Total Days</TableHead>
                         <TableHead className="text-center">Present</TableHead>
                         <TableHead className="text-center">%</TableHead>
-                        {dateRange.slice(0, 30).map((date) => (
+                        {dateRange.map((date) => (
                           <TableHead key={date} className="text-center min-w-[80px]">
                             {formatDate(date)}
                           </TableHead>
@@ -600,7 +596,7 @@ export default function AttendanceReportsPage() {
                               {student.percentage}%
                             </Badge>
                           </TableCell>
-                          {dateRange.slice(0, 30).map((date) => {
+                          {dateRange.map((date) => {
                             const code = student.dailyAttendance[date] || '-'
                             return (
                               <TableCell key={date} className="text-center">
