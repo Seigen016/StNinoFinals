@@ -86,7 +86,20 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/@supabase+supabase-js@2.78.0/node_modules/@supabase/supabase-js/dist/module/index.js [app-route] (ecmascript) <locals>");
 ;
-const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
+/**
+ * Supabase Admin Client for Server-Side Operations
+ * 
+ * ⚠️ SECURITY WARNING: This client uses the SERVICE ROLE KEY
+ * - Bypasses ALL Row Level Security (RLS) policies
+ * - Full database access with no restrictions
+ * - ONLY use in server-side code (API routes, Server Components)
+ * - NEVER import or use in client-side components
+ * 
+ * Use Cases:
+ * - Admin operations requiring elevated privileges
+ * - System-level database operations
+ * - Background jobs and cron tasks
+ */ const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 function getSupabaseAdmin() {
     if (!supabaseUrl || !serviceRoleKey) {

@@ -17,18 +17,23 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { supabase } from "@/lib/supabaseClient"
+import { useAlert } from "@/lib/use-alert"
 import { Award, BookOpen, GraduationCap, Mail, MapPin, Menu, Phone, Users, X } from "lucide-react"
 import Image from "next/image"
-import { useState } from "react"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import { useUser } from "./context/user-context"
 
 export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false)
-  const [loginType, setLoginType] = useState("student")
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user } = useUser();
+  const { showAlert } = useAlert()
   const [admissionForm, setAdmissionForm] = useState({
     studentName: "",
     parentName: "",
@@ -42,91 +47,119 @@ export default function HomePage() {
   const handleAdmissionSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log("Admission form submitted:", admissionForm)
-    alert("Thank you for your interest! We will contact you soon.")
+    showAlert({ message: "Thank you for your interest! We will contact you soon.", type: "success" })
   }
 
+  useEffect(() => {
+    console.log("=== USER CONTEXT DEBUG ===");
+    console.log("User object:", user);
+    console.log("User JSON:", JSON.stringify(user, null, 2));
+    console.log("User exists?", !!user);
+    console.log("User has role?", user?.role);
+    console.log("========================");
+  }, [user]);
+ 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError("")
     setIsLoggingIn(true)
 
     try {
-      // Determine the API endpoint based on login type
-      let apiEndpoint = ""
-      if (loginType === "teacher") {
-        apiEndpoint = "/api/teacher/login"
-      } else if (loginType === "student") {
-        apiEndpoint = "/api/student/login"
-      } else if (loginType === "admin") {
-        apiEndpoint = "/api/admin/login"
-      } else if (loginType === "parent" || loginType === "guardian") {
-        apiEndpoint = "/api/parent/login"
-      }
-
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: loginEmail,
-          password: loginPassword,
-        }),
+      
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
       })
 
-      const data = await response.json()
-
-      // Handle both 'success' and 'ok' response formats
-      if (data.success || data.ok) {
-        // Store user data in localStorage if available
-        if (data.teacher) {
-          localStorage.setItem("teacher", JSON.stringify(data.teacher))
-        } else if (data.student) {
-          localStorage.setItem("student", JSON.stringify(data.student))
-        } else if (data.parent) {
-          localStorage.setItem("parent", JSON.stringify(data.parent))
-          if (data.children) {
-            localStorage.setItem("parentChildren", JSON.stringify(data.children))
-          }
-        } else if (data.user) {
-          // Handle new API format (data.user + data.userType)
-          if (loginType === "teacher" || data.userType === "teacher") {
-            localStorage.setItem("teacher", JSON.stringify(data.user))
-          } else if (loginType === "student" || data.userType === "student") {
-            localStorage.setItem("student", JSON.stringify(data.user))
-          } else if (loginType === "admin" || data.userType === "admin") {
-            localStorage.setItem("admin", JSON.stringify(data.user))
-          } else if (loginType === "parent" || loginType === "guardian" || data.userType === "parent") {
-            localStorage.setItem("parent", JSON.stringify(data.user))
-            if (data.children) {
-              localStorage.setItem("parentChildren", JSON.stringify(data.children))
-            }
-          }
-        }
-        
-        // Keep loading state during redirect
-        setLoginOpen(false)
-        
-        // Redirect based on user type
-        if (loginType === "teacher") {
-          window.location.href = "/teacher"
-        } else if (loginType === "student") {
-          window.location.href = "/student"
-        } else if (loginType === "admin") {
-          window.location.href = "/admin"
-        } else if (loginType === "parent" || loginType === "guardian") {
-          window.location.href = "/parent"
-        }
-      } else {
-        setLoginError(data.error || "Login failed")
+      if (authError) {
+        setLoginError(authError.message)
         setIsLoggingIn(false)
+        return
       }
-    } catch (error) {
-      setLoginError("Network error. Please try again.")
+
+      if (!authData.user) {
+        setLoginError("Login failed. Please try again.")
+        setIsLoggingIn(false)
+        return
+      }
+
+      
+      let userProfile = null
+      let redirectPath = "/"
+
+      
+      const { data, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .ilike("email", loginEmail)
+        .single()
+
+      if (profileError || !data) {
+        console.error("Profile fetch error:", profileError)
+        setLoginError(
+          "No account found with this email. Please check your credentials or contact the administrator."
+        )
+        await supabase.auth.signOut()
+        setIsLoggingIn(false)
+        return
+      }
+
+      userProfile = data
+      const userRole = data.role
+
+      
+      if (userRole === "teacher") {
+        localStorage.setItem("teacher", JSON.stringify(data))
+        redirectPath = "/teacher"
+      } else if (userRole === "student") {
+        localStorage.setItem("student", JSON.stringify(data))
+        redirectPath = "/student"
+      } else if (userRole === "admin") {
+        localStorage.setItem("admin", JSON.stringify(data))
+        redirectPath = "/admin"
+      } else if (userRole === "parent") {
+        localStorage.setItem("parent", JSON.stringify(data))
+        
+        
+        const { data: relationships } = await supabase
+          .from("user_relationships")
+          .select("related_user_id, users!user_relationships_related_user_id_fkey(*)")
+          .eq("user_id", data.id)
+          .eq("users.role", "student")
+
+        if (relationships) {
+          const children = relationships
+            .map((rel: any) => rel.users)
+            .filter(Boolean)
+          localStorage.setItem("parentChildren", JSON.stringify(children))
+        }
+        
+        redirectPath = "/parent-dashboard"
+      } else {
+        setLoginError(`Invalid user role: ${userRole}. Please contact the administrator.`)
+        await supabase.auth.signOut()
+        setIsLoggingIn(false)
+        return
+      }
+
+      
+      if (!userProfile) {
+        setLoginError("Profile not found. Please contact the administrator.")
+        await supabase.auth.signOut()
+        setIsLoggingIn(false)
+        return
+      }
+
+      
+      setLoginOpen(false)
+      window.location.href = redirectPath
+    } catch (error: any) {
+      console.error("Login error:", error)
+      setLoginError(error?.message || "Network error. Please try again.")
       setIsLoggingIn(false)
     }
   }
-
+  const link = user?.role === 'parent' ? '/parent-dashboard' : `/${user?.role || ''}`;
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 transition-all scroll-smooth">
       {/* Loading Overlay */}
@@ -169,36 +202,23 @@ export default function HomePage() {
               <a href="#contact" className="text-red-800 hover:text-red-600 font-medium">
                 Contact
               </a>
-              <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
+              {user && user.role ? <Link href={link}><Button className="bg-red-800 hover:bg-red-700 text-white">Dashboard</Button></Link> : (<Dialog open={loginOpen} onOpenChange={setLoginOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-red-800 hover:bg-red-700 text-white">Login</Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle className="text-red-800">Login to Portal</DialogTitle>
-                    <DialogDescription>Choose your login type and enter your credentials</DialogDescription>
+                    <DialogDescription>Enter your credentials to access your account</DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="loginType">Login As</Label>
-                      <Select value={loginType} onValueChange={setLoginType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select login type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="student">Student</SelectItem>
-                          <SelectItem value="teacher">Teacher</SelectItem>
-                          <SelectItem value="admin">Administrator</SelectItem>
-                          <SelectItem value="guardian">Guardian (with Student Access)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div>
                       <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
                         type="email"
                         value={loginEmail}
+                        placeholder="Enter email address"
                         onChange={(e) => setLoginEmail(e.target.value)}
                         required
                         disabled={isLoggingIn}
@@ -210,6 +230,7 @@ export default function HomePage() {
                         id="password"
                         type="password"
                         value={loginPassword}
+                        placeholder="Enter password"
                         onChange={(e) => setLoginPassword(e.target.value)}
                         required
                         disabled={isLoggingIn}
@@ -237,7 +258,7 @@ export default function HomePage() {
                     </div>
                   </form>
                 </DialogContent>
-              </Dialog>
+              </Dialog>)}
             </nav>
             {/* Mobile Menu Button */}
             <div className="md:hidden">
@@ -283,15 +304,15 @@ export default function HomePage() {
                 >
                   Contact
                 </a>
-                <Button
-                  className="bg-red-800 hover:bg-red-700 text-white w-full mt-2"
+                {user && user.role ? <Link href={link} onClick={() => setMobileMenuOpen(false)}><Button className="w-full bg-red-800 hover:bg-red-700 text-white">Dashboard</Button></Link> : (<Button 
+                  className="w-full bg-red-800 hover:bg-red-700 text-white" 
                   onClick={() => {
-                    setMobileMenuOpen(false)
                     setLoginOpen(true)
+                    setMobileMenuOpen(false)
                   }}
                 >
                   Login
-                </Button>
+                </Button>)}
               </nav>
             </div>
           )}
@@ -401,16 +422,16 @@ export default function HomePage() {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <Tabs defaultValue="inquiry" className="w-full">
+            <Tabs defaultValue="requirements" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="inquiry" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-                  Admission Inquiry
-                </TabsTrigger>
                 <TabsTrigger
                   value="requirements"
                   className="data-[state=active]:bg-red-800 data-[state=active]:text-white"
                 >
-                  Requirements
+                  Admission Requirements
+                </TabsTrigger>
+                <TabsTrigger value="inquiry" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
+                  Submit Your Inquiry
                 </TabsTrigger>
               </TabsList>
 
@@ -430,6 +451,7 @@ export default function HomePage() {
                           <Input
                             id="studentName"
                             value={admissionForm.studentName}
+                            placeholder="Enter student name"
                             onChange={(e) => setAdmissionForm({ ...admissionForm, studentName: e.target.value })}
                             required
                           />
@@ -439,6 +461,7 @@ export default function HomePage() {
                           <Input
                             id="parentName"
                             value={admissionForm.parentName}
+                            placeholder="Enter parent name"
                             onChange={(e) => setAdmissionForm({ ...admissionForm, parentName: e.target.value })}
                             required
                           />
@@ -452,6 +475,7 @@ export default function HomePage() {
                             id="email"
                             type="email"
                             value={admissionForm.email}
+                            placeholder="Enter email address"
                             onChange={(e) => setAdmissionForm({ ...admissionForm, email: e.target.value })}
                             required
                           />
@@ -462,6 +486,7 @@ export default function HomePage() {
                             id="phone"
                             type="tel"
                             value={admissionForm.phone}
+                            placeholder="Enter phone number"
                             onChange={(e) => setAdmissionForm({ ...admissionForm, phone: e.target.value })}
                             required
                           />
@@ -497,6 +522,7 @@ export default function HomePage() {
                           <Input
                             id="previousSchool"
                             value={admissionForm.previousSchool}
+                            placeholder="Enter previos school name"
                             onChange={(e) => setAdmissionForm({ ...admissionForm, previousSchool: e.target.value })}
                           />
                         </div>

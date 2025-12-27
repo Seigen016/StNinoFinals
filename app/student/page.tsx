@@ -1,12 +1,48 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import jsPDF from "jspdf"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import jsPDF from "jspdf"
+import { useCallback, useEffect, useMemo, useState } from "react"
 // Import jspdf-autotable as side effect to extend jsPDF
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { supabase } from "@/lib/supabaseClient"
+import { useAlert } from "@/lib/use-alert"
+import { useConfirm } from "@/lib/use-confirm"
 import "jspdf-autotable"
+import {
+  AlertCircle,
+  Bell,
+  Calendar,
+  ChevronRight,
+  Download,
+  Eye,
+  EyeOff,
+  FileText,
+  GraduationCap,
+  Home,
+  LayoutDashboard,
+  Lock,
+  LogOut,
+  Mail,
+  RefreshCcw,
+  Search,
+  User,
+} from "lucide-react"
 
 // Extend jsPDF type to include autoTable
 declare module "jspdf" {
@@ -17,39 +53,6 @@ declare module "jspdf" {
     }
   }
 }
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  LayoutDashboard,
-  GraduationCap,
-  FileText,
-  User,
-  Home,
-  Bell,
-  Search,
-  ChevronRight,
-  Calendar,
-  LogOut,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  RefreshCcw,
-  AlertCircle,
-  Download,
-} from "lucide-react"
 
 interface Student {
   id: number
@@ -385,6 +388,8 @@ const normalizePercentage = (value?: number | null) => {
 export default function StudentDashboard() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { showAlert } = useAlert()
+  const { showConfirm } = useConfirm()
 
   const [student, setStudent] = useState<Student | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -678,7 +683,7 @@ export default function StudentDashboard() {
           birthDate: "",
           gender: "",
         })
-        alert("Profile updated successfully! Welcome to the student portal.")
+        showAlert({ message: "Profile updated successfully! Welcome to the student portal.", type: "success" })
       } else {
         setFirstLoginError(data.error || "Failed to update profile. Please try again.")
       }
@@ -690,8 +695,16 @@ export default function StudentDashboard() {
     }
   }
 
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to log out?")) {
+  const handleLogout = async () => {
+    const confirmed = await showConfirm({
+      message: "Are you sure you want to log out?",
+      confirmText: "Logout",
+      cancelText: "Cancel",
+      variant: "destructive"
+    })
+    
+    if (confirmed) {
+      await supabase.auth.signOut()
       clearStudentSession()
       setStudent(null)
       setDashboardData(null)
@@ -793,12 +806,12 @@ export default function StudentDashboard() {
 
   const generateGradesPDF = useCallback(async () => {
     if (!student) {
-      alert("Please log in to download your certificate.")
+      showAlert({ message: "Please log in to download your certificate.", type: "warning" })
       return
     }
 
     if (gradeItems.length === 0) {
-      alert("No grades available to download.")
+      showAlert({ message: "No grades available to download.", type: "warning" })
       return
     }
 
@@ -1077,13 +1090,13 @@ export default function StudentDashboard() {
         student: !!student,
         gradeItemsCount: gradeItems.length,
       })
-      alert(`Failed to generate PDF: ${error?.message || "Unknown error"}. Please check the console for details.`)
+      showAlert({ message: `Failed to generate PDF: ${error?.message || "Unknown error"}. Please check the console for details.`, type: "error" })
     }
   }, [student, gradeItems, enrollmentInfo])
 
   const generateCertificationPDF = useCallback(async () => {
     if (!student) {
-      alert("Please log in to download your certification.")
+      showAlert({ message: "Please log in to download your certification.", type: "warning" })
       return
     }
 
@@ -1272,7 +1285,7 @@ export default function StudentDashboard() {
       doc.save(fileName)
     } catch (error: any) {
       console.error("Error generating certification PDF:", error)
-      alert(`Failed to generate certification: ${error?.message || "Unknown error"}. Please check the console for details.`)
+      showAlert({ message: `Failed to generate certification: ${error?.message || "Unknown error"}. Please check the console for details.`, type: "error" })
     }
   }, [student, enrollmentInfo])
 
@@ -2122,7 +2135,7 @@ export default function StudentDashboard() {
                       </div>
                     )}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      <label className="block text-sm font-medium text-gray-700 mb-1 items-center">
                         <Mail className="w-4 h-4 mr-1" aria-hidden />
                         Email
                       </label>

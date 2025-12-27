@@ -51,41 +51,6 @@ export type Database = {
           user_agent?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "activity_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      Admin: {
-        Row: {
-          created_at: string
-          Email: string | null
-          id: number
-          Name: string | null
-          Password: string | null
-          "RFID-id": string | null
-        }
-        Insert: {
-          created_at?: string
-          Email?: string | null
-          id?: number
-          Name?: string | null
-          Password?: string | null
-          "RFID-id"?: string | null
-        }
-        Update: {
-          created_at?: string
-          Email?: string | null
-          id?: number
-          Name?: string | null
-          Password?: string | null
-          "RFID-id"?: string | null
-        }
         Relationships: []
       }
       announcements: {
@@ -128,15 +93,7 @@ export type Database = {
           title?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "announcements_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       attendance_records: {
         Row: {
@@ -151,12 +108,12 @@ export type Database = {
           scan_time: string | null
           scan_type: string
           status: string | null
-          student_id: string | null
           temperature: number | null
           time_in: string | null
           time_out: string | null
           type: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -170,12 +127,12 @@ export type Database = {
           scan_time?: string | null
           scan_type: string
           status?: string | null
-          student_id?: string | null
           temperature?: number | null
           time_in?: string | null
           time_out?: string | null
           type?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -189,14 +146,22 @@ export type Database = {
           scan_time?: string | null
           scan_type?: string
           status?: string | null
-          student_id?: string | null
           temperature?: number | null
           time_in?: string | null
           time_out?: string | null
           type?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       class_enrollments: {
         Row: {
@@ -229,13 +194,6 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "class_enrollments_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -289,76 +247,38 @@ export type Database = {
           teacher_id?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "classes_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      parents: {
+      grades: {
         Row: {
-          address: string | null
-          alternate_phone: string | null
           created_at: string | null
-          email: string | null
-          first_name: string
+          grade: number
           id: string
-          is_primary_contact: boolean | null
-          last_name: string
-          middle_name: string | null
-          occupation: string | null
-          phone_number: string
-          relationship: string
-          sms_notifications_enabled: boolean | null
+          student_id: string | null
+          subject: string
           updated_at: string | null
-          user_id: string | null
-          workplace: string | null
         }
         Insert: {
-          address?: string | null
-          alternate_phone?: string | null
           created_at?: string | null
-          email?: string | null
-          first_name: string
+          grade: number
           id?: string
-          is_primary_contact?: boolean | null
-          last_name: string
-          middle_name?: string | null
-          occupation?: string | null
-          phone_number: string
-          relationship: string
-          sms_notifications_enabled?: boolean | null
+          student_id?: string | null
+          subject: string
           updated_at?: string | null
-          user_id?: string | null
-          workplace?: string | null
         }
         Update: {
-          address?: string | null
-          alternate_phone?: string | null
           created_at?: string | null
-          email?: string | null
-          first_name?: string
+          grade?: number
           id?: string
-          is_primary_contact?: boolean | null
-          last_name?: string
-          middle_name?: string | null
-          occupation?: string | null
-          phone_number?: string
-          relationship?: string
-          sms_notifications_enabled?: boolean | null
+          student_id?: string | null
+          subject?: string
           updated_at?: string | null
-          user_id?: string | null
-          workplace?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "parents_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
+            foreignKeyName: "grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -489,163 +409,6 @@ export type Database = {
             referencedRelation: "attendance_records"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "sms_notifications_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "parents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sms_notifications_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_parents: {
-        Row: {
-          can_pickup: boolean | null
-          created_at: string | null
-          id: string
-          is_primary: boolean | null
-          parent_id: string
-          relationship_type: string
-          student_id: string
-        }
-        Insert: {
-          can_pickup?: boolean | null
-          created_at?: string | null
-          id?: string
-          is_primary?: boolean | null
-          parent_id: string
-          relationship_type: string
-          student_id: string
-        }
-        Update: {
-          can_pickup?: boolean | null
-          created_at?: string | null
-          id?: string
-          is_primary?: boolean | null
-          parent_id?: string
-          relationship_type?: string
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_parents_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "parents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_parents_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      students: {
-        Row: {
-          address: string | null
-          blood_type: string | null
-          city: string | null
-          created_at: string | null
-          date_of_birth: string
-          email: string | null
-          emergency_contact: string | null
-          enrollment_date: string
-          first_name: string
-          gender: string
-          grade_level: string
-          id: string
-          last_name: string
-          medical_notes: string | null
-          middle_name: string | null
-          Password: string | null
-          phone_number: string | null
-          photo_url: string | null
-          province: string | null
-          rfid_card: string | null
-          rfid_tag: string
-          section: string | null
-          status: string | null
-          student_number: string
-          updated_at: string | null
-          user_id: string | null
-          zip_code: string | null
-        }
-        Insert: {
-          address?: string | null
-          blood_type?: string | null
-          city?: string | null
-          created_at?: string | null
-          date_of_birth: string
-          email?: string | null
-          emergency_contact?: string | null
-          enrollment_date: string
-          first_name: string
-          gender: string
-          grade_level: string
-          id?: string
-          last_name: string
-          medical_notes?: string | null
-          middle_name?: string | null
-          Password?: string | null
-          phone_number?: string | null
-          photo_url?: string | null
-          province?: string | null
-          rfid_card?: string | null
-          rfid_tag: string
-          section?: string | null
-          status?: string | null
-          student_number: string
-          updated_at?: string | null
-          user_id?: string | null
-          zip_code?: string | null
-        }
-        Update: {
-          address?: string | null
-          blood_type?: string | null
-          city?: string | null
-          created_at?: string | null
-          date_of_birth?: string
-          email?: string | null
-          emergency_contact?: string | null
-          enrollment_date?: string
-          first_name?: string
-          gender?: string
-          grade_level?: string
-          id?: string
-          last_name?: string
-          medical_notes?: string | null
-          middle_name?: string | null
-          Password?: string | null
-          phone_number?: string | null
-          photo_url?: string | null
-          province?: string | null
-          rfid_card?: string | null
-          rfid_tag?: string
-          section?: string | null
-          status?: string | null
-          student_number?: string
-          updated_at?: string | null
-          user_id?: string | null
-          zip_code?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "students_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       system_settings: {
@@ -672,69 +435,46 @@ export type Database = {
         }
         Relationships: []
       }
-      teachers: {
+      user_relationships: {
         Row: {
+          can_pickup: boolean | null
           created_at: string | null
-          date_hired: string | null
-          department: string | null
-          email: string
-          employee_number: string
-          first_name: string
           id: string
-          last_name: string
-          middle_name: string | null
-          Password: string | null
-          phone_number: string | null
-          rfid_card: string | null
-          rfid_tag: string | null
-          specialization: string | null
-          status: string | null
-          updated_at: string | null
-          user_id: string | null
+          is_primary: boolean | null
+          related_user_id: string
+          relationship_type: string | null
+          user_id: string
         }
         Insert: {
+          can_pickup?: boolean | null
           created_at?: string | null
-          date_hired?: string | null
-          department?: string | null
-          email: string
-          employee_number: string
-          first_name: string
           id?: string
-          last_name: string
-          middle_name?: string | null
-          Password?: string | null
-          phone_number?: string | null
-          rfid_card?: string | null
-          rfid_tag?: string | null
-          specialization?: string | null
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          is_primary?: boolean | null
+          related_user_id: string
+          relationship_type?: string | null
+          user_id: string
         }
         Update: {
+          can_pickup?: boolean | null
           created_at?: string | null
-          date_hired?: string | null
-          department?: string | null
-          email?: string
-          employee_number?: string
-          first_name?: string
           id?: string
-          last_name?: string
-          middle_name?: string | null
-          Password?: string | null
-          phone_number?: string | null
-          rfid_card?: string | null
-          rfid_tag?: string | null
-          specialization?: string | null
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          is_primary?: boolean | null
+          related_user_id?: string
+          relationship_type?: string | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "teachers_user_id_fkey"
+            foreignKeyName: "user_relationships_related_user_id_fkey"
+            columns: ["related_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_relationships_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -742,28 +482,100 @@ export type Database = {
       }
       users: {
         Row: {
+          address: string | null
+          admin_title: string | null
+          blood_type: string | null
+          city: string | null
           created_at: string | null
+          date_hired: string | null
+          date_of_birth: string | null
+          department: string | null
+          email: string | null
+          emergency_contact: string | null
+          employee_number: string | null
+          enrollment_date: string | null
+          first_name: string
+          gender: string | null
+          grade_level: string | null
           id: string
-          is_active: boolean | null
-          role: string
+          last_name: string
+          medical_notes: string | null
+          middle_name: string | null
+          phone_number: string | null
+          photo_url: string | null
+          province: string | null
+          rfid: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          section: string | null
+          specialization: string | null
+          status: string | null
+          student_number: string | null
           updated_at: string | null
-          username: string
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
+          admin_title?: string | null
+          blood_type?: string | null
+          city?: string | null
           created_at?: string | null
+          date_hired?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          email?: string | null
+          emergency_contact?: string | null
+          employee_number?: string | null
+          enrollment_date?: string | null
+          first_name: string
+          gender?: string | null
+          grade_level?: string | null
           id: string
-          is_active?: boolean | null
-          role: string
+          last_name: string
+          medical_notes?: string | null
+          middle_name?: string | null
+          phone_number?: string | null
+          photo_url?: string | null
+          province?: string | null
+          rfid?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          section?: string | null
+          specialization?: string | null
+          status?: string | null
+          student_number?: string | null
           updated_at?: string | null
-          username: string
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
+          admin_title?: string | null
+          blood_type?: string | null
+          city?: string | null
           created_at?: string | null
+          date_hired?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          email?: string | null
+          emergency_contact?: string | null
+          employee_number?: string | null
+          enrollment_date?: string | null
+          first_name?: string
+          gender?: string | null
+          grade_level?: string | null
           id?: string
-          is_active?: boolean | null
-          role?: string
+          last_name?: string
+          medical_notes?: string | null
+          middle_name?: string | null
+          phone_number?: string | null
+          photo_url?: string | null
+          province?: string | null
+          rfid?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          section?: string | null
+          specialization?: string | null
+          status?: string | null
+          student_number?: string | null
           updated_at?: string | null
-          username?: string
+          zip_code?: string | null
         }
         Relationships: []
       }
@@ -801,7 +613,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "teacher" | "parent" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -928,6 +740,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "teacher", "parent", "student"],
+    },
   },
 } as const

@@ -80,7 +80,20 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/@supabase+supabase-js@2.78.0/node_modules/@supabase/supabase-js/dist/module/index.js [app-route] (ecmascript) <locals>");
 ;
-const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
+/**
+ * Supabase Admin Client for Server-Side Operations
+ * 
+ * ⚠️ SECURITY WARNING: This client uses the SERVICE ROLE KEY
+ * - Bypasses ALL Row Level Security (RLS) policies
+ * - Full database access with no restrictions
+ * - ONLY use in server-side code (API routes, Server Components)
+ * - NEVER import or use in client-side components
+ * 
+ * Use Cases:
+ * - Admin operations requiring elevated privileges
+ * - System-level database operations
+ * - Background jobs and cron tasks
+ */ const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 function getSupabaseAdmin() {
     if (!supabaseUrl || !serviceRoleKey) {
@@ -132,12 +145,12 @@ async function GET(request) {
         const startISO = `${startDateStr}T00:00:00.000Z`;
         const endISO = `${endDateStr}T23:59:59.999Z`;
         // Fetch all teachers
-        const { data: teachers, error: teachersError } = await admin.from('teachers').select('*').limit(1000);
+        const { data: teachers, error: teachersError } = await admin.from('users').eq('role', 'teacher').select('*').limit(1000);
         if (teachersError) {
             console.error('Error fetching teachers:', teachersError);
         }
         // Fetch attendance records for teachers
-        // Teachers are identified by checking if student_id matches a teacher_id or email
+        // Teachers are identified by checking if user_id matches a teacher's UUID
         const { data: allAttendanceRecords, error: attendanceError } = await admin.from('attendance_records').select('*').gte('scan_time', startISO).lte('scan_time', endISO).order('scan_time', {
             ascending: true
         });
@@ -157,12 +170,19 @@ async function GET(request) {
         ;
         if (teachers) {
             teachers.forEach((teacher)=>{
-                const teacherIdStr = (teacher.teacher_id || teacher.id || '').toString().trim();
+                const teacherIdStr = (teacher.employee_number || teacher.id || '').toString().trim();
                 const teacherEmail = (teacher.email || '').toString().trim().toLowerCase();
-                const teacherName = `${teacher.first_name || ''} ${teacher.last_name || ''}`.trim() || teacher.name || 'Unknown';
-                // Map by teacher ID
+                const teacherName = `${teacher.first_name || ''} ${teacher.middle_name || ''} ${teacher.last_name || ''}`.trim() || 'Unknown';
+                // Map by teacher ID or UUID
+                const teacherUuid = (teacher.id || '').toString().trim();
                 if (teacherIdStr) {
                     teacherMap[teacherIdStr] = {
+                        ...teacher,
+                        fullName: teacherName
+                    };
+                }
+                if (teacherUuid) {
+                    teacherMap[teacherUuid] = teacherMap[teacherIdStr] || {
                         ...teacher,
                         fullName: teacherName
                     };
@@ -175,7 +195,7 @@ async function GET(request) {
                     };
                 }
                 // Map by RFID card (normalize: uppercase, remove spaces)
-                const rfidCard = (teacher.rfid_card || teacher.rfidCard || teacher.rfid_tag || teacher.rfidTag || '').toString().trim().toUpperCase().replace(/\s+/g, '');
+                const rfidCard = (teacher.rfid || '').toString().trim().toUpperCase().replace(/\s+/g, '');
                 if (rfidCard) {
                     teacherRfidMap[rfidCard] = {
                         ...teacher,
@@ -192,11 +212,11 @@ async function GET(request) {
         console.log(`📊 Found ${teachers?.length || 0} teachers`);
         console.log(`🔑 Teacher RFID map has ${Object.keys(teacherRfidMap).length} entries:`, Object.keys(teacherRfidMap));
         // Filter attendance records to only include teachers
-        // Check both student_id match AND RFID card match
+        // Check both user_id match AND RFID card match
         const teacherAttendanceRecords = (allAttendanceRecords || []).filter((record)=>{
-            const recordId = (record.student_id || '').toString().trim();
+            const recordId = (record.user_id || '').toString().trim();
             const recordRfid = (record.rfid_card || record.rfidCard || record.rfid_tag || record.rfidTag || '').toString().trim().toUpperCase().replace(/\s+/g, '');
-            // Check if student_id matches a teacher
+            // Check if user_id matches a teacher
             if (teacherMap[recordId] !== undefined) {
                 return true;
             }
@@ -211,18 +231,18 @@ async function GET(request) {
         const teacherStats = {};
         // Process each attendance record
         teacherAttendanceRecords.forEach((record)=>{
-            const recordId = (record.student_id || '').toString().trim();
+            const recordId = (record.user_id || '').toString().trim();
             const recordRfid = (record.rfid_card || record.rfidCard || record.rfid_tag || record.rfidTag || '').toString().trim().toUpperCase().replace(/\s+/g, '');
-            // Try to find teacher by student_id first, then by RFID
+            // Try to find teacher by user_id first, then by RFID
             let teacher = teacherMap[recordId];
             if (!teacher && recordRfid) {
                 teacher = teacherRfidMap[recordRfid] || teacherMap[recordRfid];
             }
             if (!teacher) {
-                console.log(`⚠️ Could not find teacher for record: student_id=${recordId}, rfid=${recordRfid}`);
+                console.log(`⚠️ Could not find teacher for record: id=${recordId}, rfid=${recordRfid}`);
                 return;
             }
-            const teacherKey = teacher.teacher_id || teacher.id || recordId;
+            const teacherKey = teacher.employee_number || teacher.id || recordId;
             if (!teacherStats[teacherKey]) {
                 teacherStats[teacherKey] = {
                     teacher,
@@ -267,9 +287,9 @@ async function GET(request) {
             ;
             stats.percentage = Math.round(stats.present / total * 100);
             return {
-                teacherId: stats.teacher.teacher_id || stats.teacher.id,
+                teacherId: stats.teacher.employee_number || stats.teacher.id,
                 teacherName: stats.teacher.fullName,
-                subject: stats.teacher.subject || stats.teacher.subjects || stats.teacher.subject_taught || 'N/A',
+                subject: stats.teacher.specialization || stats.teacher.department || 'N/A',
                 totalDays: stats.totalDays,
                 present: stats.present,
                 absent: stats.absent,

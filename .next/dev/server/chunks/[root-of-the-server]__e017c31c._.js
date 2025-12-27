@@ -138,7 +138,20 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/@supabase+supabase-js@2.78.0/node_modules/@supabase/supabase-js/dist/module/index.js [app-route] (ecmascript) <locals>");
 ;
-const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
+/**
+ * Supabase Admin Client for Server-Side Operations
+ * 
+ * ⚠️ SECURITY WARNING: This client uses the SERVICE ROLE KEY
+ * - Bypasses ALL Row Level Security (RLS) policies
+ * - Full database access with no restrictions
+ * - ONLY use in server-side code (API routes, Server Components)
+ * - NEVER import or use in client-side components
+ * 
+ * Use Cases:
+ * - Admin operations requiring elevated privileges
+ * - System-level database operations
+ * - Background jobs and cron tasks
+ */ const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 function getSupabaseAdmin() {
     if (!supabaseUrl || !serviceRoleKey) {
@@ -291,7 +304,7 @@ async function GET(request) {
             if (!querySuccess) {
                 try {
                     console.log('Method 2: Trying direct query with explicit columns...');
-                    let directQuery = supabaseClient.from('attendance_records').select('id, scan_time, scan_type, student_id, rfid_card, rfid_tag, status, time_in, time_out, created_at, device_id').order('scan_time', {
+                    let directQuery = supabaseClient.from('attendance_records').select('id, scan_time, scan_type, user_id, rfid_card, rfid_tag, status, time_in, time_out, created_at, device_id').order('scan_time', {
                         ascending: false
                     }).limit(limit);
                     if (since) {
@@ -374,32 +387,32 @@ async function GET(request) {
         }
         // Fetch student and teacher information for all records
         const studentIds = [
-            ...new Set((data || []).map((r)=>r.student_id).filter(Boolean))
+            ...new Set((data || []).map((r)=>r.user_id).filter(Boolean))
         ];
         const studentMap = {};
         const teacherMap = {};
         if (studentIds.length > 0) {
             try {
-                // Fetch all students
-                const { data: allStudents, error: studentsError } = await supabaseClient.from('students').select('*').limit(1000);
+                // Fetch all students from users table
+                const { data: allStudents, error: studentsError } = await supabaseClient.from('users').select('*').eq('role', 'student').limit(1000);
                 if (!studentsError && allStudents) {
                     allStudents.forEach((student)=>{
-                        const studentIdStr = (student.student_id || '').toString().trim();
                         const studentNumberStr = (student.student_number || '').toString().trim();
                         const studentIdUuid = (student.id || '').toString().trim();
-                        if (studentIdStr) studentMap[studentIdStr] = student;
                         if (studentNumberStr) studentMap[studentNumberStr] = student;
                         if (studentIdUuid) studentMap[studentIdUuid] = student;
                     });
                 }
                 // Also fetch teachers
-                const { data: allTeachers, error: teachersError } = await supabaseClient.from('teachers').select('*').limit(1000);
+                const { data: allTeachers, error: teachersError } = await supabaseClient.from('users').select('*').eq('role', 'teacher').limit(1000);
                 if (!teachersError && allTeachers) {
                     allTeachers.forEach((teacher)=>{
-                        const teacherIdStr = (teacher.teacher_id || teacher.id || '').toString().trim();
+                        const teacherIdUuid = (teacher.id || '').toString().trim();
                         const teacherEmail = (teacher.email || '').toString().trim().toLowerCase();
-                        if (teacherIdStr) teacherMap[teacherIdStr] = teacher;
+                        const employeeNum = (teacher.employee_number || '').toString().trim();
+                        if (teacherIdUuid) teacherMap[teacherIdUuid] = teacher;
                         if (teacherEmail) teacherMap[teacherEmail] = teacher;
+                        if (employeeNum) teacherMap[employeeNum] = teacher;
                     });
                 }
             } catch (fetchError) {
@@ -445,26 +458,35 @@ async function GET(request) {
                 scanType = record.type.toLowerCase() === 'time_in' || record.type.toLowerCase() === 'timein' ? 'timein' : record.type.toLowerCase() === 'time_out' || record.type.toLowerCase() === 'timeout' ? 'timeout' : null;
             }
             // Get student or teacher info from maps
-            const student = studentMap[record.student_id] || null;
-            const teacher = teacherMap[record.student_id] || null;
+            const student = studentMap[record.user_id] || null;
+            const teacher = teacherMap[record.user_id] || null;
             // Determine if this is a teacher or student
-            const isTeacher = !!teacher || student && (student.role === 'teacher' || student.user_type === 'teacher' || student.teacher_id || !student.student_id && !student.student_number);
+            const isTeacher = !!teacher || student && (student.role === 'teacher' || student.user_type === 'teacher' || !student.student_number);
             const person = teacher || student;
+            // Debug: Log the record to see what RFID fields are populated
+            console.log('📋 Formatting record:', {
+                id: record.id,
+                user_id: record.user_id,
+                rfid_card: record.rfid_card,
+                rfid_tag: record.rfid_tag,
+                person_found: !!person,
+                person_name: person ? `${person.first_name} ${person.last_name}` : 'None'
+            });
             return {
                 id: record.id,
-                studentId: record.student_id,
-                studentName: person ? `${person.first_name || person.firstName || ''} ${person.last_name || person.lastName || ''}`.trim() || person.name || 'Unknown' : 'Unknown',
-                gradeLevel: isTeacher ? null : person?.grade_level || person?.gradeLevel || 'N/A',
+                studentId: record.user_id,
+                studentName: person ? `${person.first_name || ''} ${person.middle_name || ''} ${person.last_name || ''}`.trim() || 'Unknown' : 'Unknown',
+                gradeLevel: isTeacher ? null : person?.grade_level || 'N/A',
                 section: isTeacher ? null : person?.section || 'N/A',
                 scanTime: record.scan_time || record.created_at,
                 status: record.status || 'Present',
-                rfidCard: record.rfid_card || 'N/A',
-                studentPhoto: person?.photo_url || person?.profile_picture || person?.picture || null,
+                rfidCard: record.rfid_card || record.rfid_tag || 'N/A',
+                studentPhoto: person?.photo_url || null,
                 scanType: scanType,
                 timeIn: record.time_in || null,
                 timeOut: record.time_out || null,
                 isTeacher: isTeacher || false,
-                subject: isTeacher ? person?.subject || person?.subjects || person?.subject_taught || 'N/A' : null,
+                subject: isTeacher ? person?.specialization || person?.department || 'N/A' : null,
                 role: person?.role || null
             };
         });
@@ -605,7 +627,7 @@ async function POST(request) {
             const rfidNoLeadingZeros = rfidNormalized.replace(/^0+/, '');
             console.log(`Searching for student with RFID: ${rfidNormalized} (also trying: ${rfidNoLeadingZeros})`);
             // Fetch all students and filter in memory to avoid column errors
-            const { data: allStudents, error: fetchError } = await supabaseClient.from('students').select('*').limit(1000);
+            const { data: allStudents, error: fetchError } = await supabaseClient.from('users').select('*').eq('role', 'student').limit(1000);
             if (fetchError) {
                 console.error('Error fetching students:', fetchError);
                 return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$8_react$2d$dom$40$19$2e$2$2e$1_react$40$19$2e$2$2e$1_$5f$react$40$19$2e$2$2e$1$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
@@ -626,37 +648,39 @@ async function POST(request) {
             // FIRST check teachers table (prioritize teachers over students if same RFID)
             // This ensures teacher scans are recorded as teachers, not students
             console.log(`Checking teachers first for RFID: ${rfidNormalized}`);
-            const { data: allTeachers, error: teachersError } = await supabaseClient.from('teachers').select('*').limit(1000);
+            const { data: allTeachers, error: teachersError } = await supabaseClient.from('users').select('*').eq('role', 'teacher').limit(1000);
             let matchedTeacher = null;
             if (!teachersError && allTeachers) {
-                // Filter teachers in memory by RFID (check all possible column names)
+                // Filter teachers in memory by RFID
                 const teachers = (allTeachers || []).filter((teacher)=>{
-                    const rfid1 = (teacher.rfid_card || '').toString().trim().toUpperCase();
-                    const rfid2 = (teacher.rfidCard || '').toString().trim().toUpperCase();
-                    const rfid3 = (teacher.rfid_tag || '').toString().trim().toUpperCase();
-                    const rfid4 = (teacher.rfidTag || '').toString().trim().toUpperCase();
-                    return rfid1 === rfidNormalized || rfid1 === rfidNoLeadingZeros || rfid2 === rfidNormalized || rfid2 === rfidNoLeadingZeros || rfid3 === rfidNormalized || rfid3 === rfidNoLeadingZeros || rfid4 === rfidNormalized || rfid4 === rfidNoLeadingZeros || rfid1.includes(rfidNormalized) || rfid2.includes(rfidNormalized) || rfid3.includes(rfidNormalized) || rfid4.includes(rfidNormalized);
+                    const rfid = (teacher.rfid || '').toString().trim().toUpperCase();
+                    return rfid === rfidNormalized || rfid === rfidNoLeadingZeros || rfid.includes(rfidNormalized);
                 });
                 if (teachers && teachers.length > 0) {
                     matchedTeacher = teachers[0];
-                    console.log(`✅ Found teacher FIRST: ${matchedTeacher.first_name || matchedTeacher.firstName || 'Unknown'} ${matchedTeacher.last_name || matchedTeacher.lastName || ''}`);
-                    // Use teacher_id or id (TEXT) for attendance_records.student_id
-                    studentId = matchedTeacher.teacher_id || matchedTeacher.id?.toString() || matchedTeacher.email;
+                    console.log(`✅ Found teacher FIRST: ${matchedTeacher.first_name || 'Unknown'} ${matchedTeacher.last_name || ''}`);
+                    // Use UUID id for attendance_records.user_id (must be UUID, not employee_number)
+                    studentId = matchedTeacher.id?.toString();
+                    if (!studentId) {
+                        console.error('❌ Teacher found but has no UUID:', matchedTeacher);
+                        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$8_react$2d$dom$40$19$2e$2$2e$1_react$40$19$2e$2$2e$1_$5f$react$40$19$2e$2$2e$1$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                            success: false,
+                            error: 'Teacher record is invalid (missing UUID). Please contact administrator.'
+                        }, {
+                            status: 200,
+                            headers: postHeaders
+                        });
+                    }
                 }
             }
             // If no teacher found, check students table
             if (!matchedTeacher) {
                 console.log(`No teacher found, checking students for RFID: ${rfidNormalized}`);
-                // Filter students in memory by RFID (check all possible column names)
-                // Priority: rfid_card (what ESP32 expects) > rfidCard > rfid_tag > rfidTag
+                // Filter students in memory by RFID
                 const students = (allStudents || []).filter((student)=>{
-                    const rfid1 = (student.rfid_card || '').toString().trim().toUpperCase() // Primary - ESP32 expects this
-                    ;
-                    const rfid2 = (student.rfidCard || '').toString().trim().toUpperCase();
-                    const rfid3 = (student.rfid_tag || '').toString().trim().toUpperCase();
-                    const rfid4 = (student.rfidTag || '').toString().trim().toUpperCase();
+                    const rfid = (student.rfid || '').toString().trim().toUpperCase();
                     // Check exact matches first, then partial
-                    return rfid1 === rfidNormalized || rfid1 === rfidNoLeadingZeros || rfid2 === rfidNormalized || rfid2 === rfidNoLeadingZeros || rfid3 === rfidNormalized || rfid3 === rfidNoLeadingZeros || rfid4 === rfidNormalized || rfid4 === rfidNoLeadingZeros || rfid1.includes(rfidNormalized) || rfid2.includes(rfidNormalized) || rfid3.includes(rfidNormalized) || rfid4.includes(rfidNormalized);
+                    return rfid === rfidNormalized || rfid === rfidNoLeadingZeros || rfid.includes(rfidNormalized);
                 });
                 if (!students || students.length === 0) {
                     // Neither student nor teacher found
@@ -677,31 +701,39 @@ async function POST(request) {
                 } else {
                     // Found a student
                     const matchedStudent = students[0];
-                    console.log(`Found student: ${matchedStudent.first_name || matchedStudent.firstName || 'Unknown'} ${matchedStudent.last_name || matchedStudent.lastName || ''}`);
-                    // Use student_number or student_id (TEXT) - NOT the UUID id
-                    // attendance_records.student_id is TEXT type, so we store TEXT values
-                    studentId = matchedStudent.student_number || matchedStudent.student_id || matchedStudent.studentId || matchedStudent.id?.toString();
+                    console.log(`Found student: ${matchedStudent.first_name || 'Unknown'} ${matchedStudent.last_name || ''}`);
+                    // Use UUID id for attendance_records.user_id (must be UUID, not student_number)
+                    studentId = matchedStudent.id?.toString();
+                    if (!studentId) {
+                        console.error('❌ Student found but has no UUID:', matchedStudent);
+                        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$8_react$2d$dom$40$19$2e$2$2e$1_react$40$19$2e$2$2e$1_$5f$react$40$19$2e$2$2e$1$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                            success: false,
+                            error: 'Student record is invalid (missing UUID). Please contact administrator.'
+                        }, {
+                            status: 200,
+                            headers: postHeaders
+                        });
+                    }
                 }
             }
         }
         // Check if student has already scanned in today
-        // student_id is now TEXT type, so we can query directly
-        // But we need to cast to text to avoid UUID comparison errors
+        // user_id is UUID type referencing users.id
         let todayRecords = [];
         let checkError = null;
         // Fetch all records for today, then filter in memory to avoid type mismatch
-        const { data: allTodayRecords, error: fetchError } = await supabaseClient.from('attendance_records').select('id, scan_type, scan_time, time_in, time_out, student_id').gte('scan_time', todayStart).lte('scan_time', todayEndISO).order('scan_time', {
+        const { data: allTodayRecords, error: fetchError } = await supabaseClient.from('attendance_records').select('id, scan_type, scan_time, time_in, time_out, user_id').gte('scan_time', todayStart).lte('scan_time', todayEndISO).order('scan_time', {
             ascending: true
         });
         if (fetchError) {
             checkError = fetchError;
             console.error('Error fetching today records:', fetchError);
         } else if (allTodayRecords) {
-            // Filter in memory by student_id (text match) to avoid UUID/TEXT comparison issues
+            // Filter in memory by user_id (UUID match)
             todayRecords = allTodayRecords.filter((r)=>{
-                const rId = (r.student_id || '').toString().trim();
+                const rId = (r.user_id || '').toString().trim();
                 const sId = (studentId || '').toString().trim();
-                return rId === sId || rId === studentId || sId === r.student_id;
+                return rId === sId || rId === studentId || sId === r.user_id;
             });
         }
         if (checkError) {
@@ -764,7 +796,7 @@ async function POST(request) {
         // Insert the attendance record
         // Build insert object with all required fields
         const attendanceRecord = {
-            student_id: studentId
+            user_id: studentId
         };
         // Add RFID fields - set both rfid_card and rfid_tag to avoid NOT NULL constraint errors
         const rfidValue = scanData.rfidCard || '';
@@ -790,14 +822,14 @@ async function POST(request) {
         attendanceRecord.type = scanType;
         // Insert the attendance record (without join to avoid foreign key issues)
         console.log('💾 Inserting attendance record:', {
-            student_id: attendanceRecord.student_id,
+            user_id: attendanceRecord.user_id,
             rfid_card: attendanceRecord.rfid_card,
             scan_type: attendanceRecord.scan_type,
             scan_time: attendanceRecord.scan_time
         });
         const { data: newRecord, error: insertError } = await supabaseClient.from('attendance_records').insert([
             attendanceRecord
-        ]).select('*').single();
+        ]).select('*, users(*)').single();
         if (insertError) {
             console.error('❌ Insert failed:', insertError);
             console.error('Database error:', insertError);
@@ -831,28 +863,27 @@ async function POST(request) {
         let personInfo = null;
         let isTeacher = false;
         if (studentId) {
-            // First, try to find in students table
-            const { data: allStudents } = await supabaseClient.from('students').select('*').limit(1000);
+            // First, try to find in users table as student
+            const { data: allStudents } = await supabaseClient.from('users').select('*').eq('role', 'student').limit(1000);
             if (allStudents) {
                 // Find matching student by comparing as strings
                 const studentIdStr = (studentId || '').toString().trim();
                 personInfo = allStudents.find((student)=>{
-                    const sId = (student.student_id || '').toString().trim();
                     const sNum = (student.student_number || '').toString().trim();
                     const sUuid = (student.id || '').toString().trim();
-                    return sId === studentIdStr || sNum === studentIdStr || sUuid === studentIdStr;
+                    return sNum === studentIdStr || sUuid === studentIdStr;
                 }) || null;
             }
-            // If not found in students, try teachers table
+            // If not found in students, try users table as teacher
             if (!personInfo) {
-                const { data: allTeachers } = await supabaseClient.from('teachers').select('*').limit(1000);
+                const { data: allTeachers } = await supabaseClient.from('users').select('*').eq('role', 'teacher').limit(1000);
                 if (allTeachers) {
                     const personIdStr = (studentId || '').toString().trim();
                     personInfo = allTeachers.find((teacher)=>{
-                        const tId = (teacher.teacher_id || '').toString().trim();
+                        const tNum = (teacher.employee_number || '').toString().trim();
                         const tUuid = (teacher.id || '').toString().trim();
                         const tEmail = (teacher.email || '').toString().trim().toLowerCase();
-                        return tId === personIdStr || tUuid === personIdStr || tEmail === personIdStr;
+                        return tNum === personIdStr || tUuid === personIdStr || tEmail === personIdStr;
                     }) || null;
                     if (personInfo) {
                         isTeacher = true;
@@ -863,7 +894,7 @@ async function POST(request) {
         // Format the response
         const formattedRecord = {
             id: newRecord.id,
-            studentId: newRecord.student_id || studentId,
+            studentId: newRecord.users?.student_number || studentId,
             studentName: personInfo ? `${personInfo.first_name || personInfo.firstName || ''} ${personInfo.last_name || personInfo.lastName || ''}`.trim() || personInfo.name || 'Unknown' : 'Unknown',
             gradeLevel: isTeacher ? null : personInfo?.grade_level || personInfo?.gradeLevel || 'N/A',
             section: isTeacher ? null : personInfo?.section || 'N/A',
@@ -895,13 +926,13 @@ async function POST(request) {
                     // If the student record contains a parent_id, prefer that
                     const parentId = personInfo?.parent_id || personInfo?.parentId || null;
                     if (parentId) {
-                        const { data: parentRecord, error: pErr } = await supabaseClient.from('parents').select('id, phone, mobile, phone_number, email').eq('id', parentId).limit(1).single();
+                        const { data: parentRecord, error: pErr } = await supabaseClient.from('users').select('id, phone, mobile, phone_number, email').eq('id', parentId).eq('role', 'parent').limit(1).single();
                         if (!pErr && parentRecord) parentRecords.push(parentRecord);
                     }
                     // If parent not found but parent_email exists on student, check parents by email
                     const parentEmail = personInfo?.parent_email || personInfo?.parentEmail || null;
                     if (!parentRecords.length && parentEmail) {
-                        const { data: parentRecord2, error: pErr2 } = await supabaseClient.from('parents').select('id, phone, mobile, phone_number, email').ilike('email', parentEmail).limit(1).single();
+                        const { data: parentRecord2, error: pErr2 } = await supabaseClient.from('users').select('id, phone, mobile, phone_number, email').ilike('email', parentEmail).limit(1).single();
                         if (!pErr2 && parentRecord2) parentRecords.push(parentRecord2);
                     }
                     // If still not found, look up linkage table parent_students (if exists) for this student (match by student id / student_number / uuid)

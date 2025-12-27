@@ -1,1660 +1,223 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  LayoutDashboard,
-  Users,
-  Clock,
-  BarChart3,
-  Settings,
-  Home,
-  Shield,
-  FileText,
-  Calendar,
-  DollarSign,
-  Lock,
-  Mail,
-  RefreshCcw,
-  AlertCircle,
-  Wifi,
   Activity,
-  Filter,
+  CalendarCheck,
+  CalendarDays,
+  ClipboardList,
+  DollarSign,
+  FileText,
   Radio,
-  Maximize2,
+  Settings,
+  Shield,
+  UserCheck,
+  UserCog,
+  Users
 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link"
+import { AdminHeader } from "./components/AdminHeader"
+import { useAdminData } from "./hooks/useAdminData"
+import { useAuth } from "./hooks/useAuth"
 
-interface Admin {
-  id: number
-  email: string
-  name?: string
-  first_name?: string
-  last_name?: string
-  [key: string]: any
-}
+export default function AdminPage() {
+  const { admin, loading } = useAuth()
+  const { stats, loadingStats } = useAdminData(admin)
 
-interface Student {
-  id: number
-  name: string
-  student_id: string
-  grade_level: string
-  section: string
-  email?: string
-  phone?: string
-  status?: string
-  created_at?: string
-  rfid_card?: string
-  rfidCard?: string
-  rfid_tag?: string
-}
-
-interface AttendanceData {
-  summary: {
-    totalStudents: number
-    presentStudents: number
-    totalTeachers: number
-    presentTeachers: number
-    lastSync: string
-  }
-  rfid: {
-    status: string
-    activeCards: number
-    offlineReaders: number
-    pendingActivations: number
-  }
-  recentAlerts: {
-    id: string
-    type: "info" | "warning" | "error"
-    message: string
-    timestamp: string
-  }[]
-}
-
-interface AdminSettings {
-  schoolName: string
-  academicYear: string
-  automaticBackup: boolean
-  rfidIntegration: boolean
-  emailNotifications: boolean
-  studentPortal: boolean
-  teacherPortal: boolean
-}
-
-const DEFAULT_SETTINGS: AdminSettings = {
-  schoolName: "Sto Niño de Praga Academy",
-  academicYear: "2024-2025",
-  automaticBackup: true,
-  rfidIntegration: true,
-  emailNotifications: true,
-  studentPortal: true,
-  teacherPortal: true,
-}
-
-const gradeOptions = [
-  "All Grades",
-  "Grade 1",
-  "Grade 2",
-  "Grade 3",
-  "Grade 4",
-  "Grade 5",
-  "Grade 6",
-  "Grade 7",
-  "Grade 8",
-  "Grade 9",
-  "Grade 10",
-  "Grade 11",
-  "Grade 12",
-]
-
-const studentStatusOptions = ["Enrolled", "Pending", "Alumni", "Inactive"]
-
-export default function AdminPortal() {
-  const [admin, setAdmin] = useState<Admin | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [loginEmail, setLoginEmail] = useState("")
-  const [loginPassword, setLoginPassword] = useState("")
-  const [loginError, setLoginError] = useState<string | null>(null)
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const [showAddStudent, setShowAddStudent] = useState(false)
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false)
-  const [newStudentCredentials, setNewStudentCredentials] = useState<{
-    studentId: string
-    username: string
-    password: string
-    name: string
-  } | null>(null)
-  const [newStudent, setNewStudent] = useState({
-    name: "",
-    studentId: "",
-    gradeLevel: "",
-    section: "",
-    email: "",
-    phone: "",
-  })
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalTeachers: 0,
-    attendanceRate: 0,
-  })
-  const [students, setStudents] = useState<Student[]>([])
-  const [loadingStats, setLoadingStats] = useState(false)
-  const [loadingStudents, setLoadingStudents] = useState(false)
-  const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null)
-  const [attendanceLoading, setAttendanceLoading] = useState(false)
-  const [attendanceError, setAttendanceError] = useState<string | null>(null)
-  const [studentFilters, setStudentFilters] = useState({
-    search: "",
-    grade: "All Grades",
-    status: "all",
-  })
-  const [studentFormError, setStudentFormError] = useState<string | null>(null)
-  const [settingsForm, setSettingsForm] = useState<AdminSettings>(DEFAULT_SETTINGS)
-  const [settingsLoading, setSettingsLoading] = useState(false)
-  const [settingsSaving, setSettingsSaving] = useState(false)
-  const [settingsFeedback, setSettingsFeedback] = useState<string | null>(null)
-  const [rfidScans, setRfidScans] = useState<any[]>([])
-  const [rfidScansLoading, setRfidScansLoading] = useState(false)
-  const [rfidScansError, setRfidScansError] = useState<string | null>(null)
-  const [showUpdateRfid, setShowUpdateRfid] = useState(false)
-  const [selectedStudentForRfid, setSelectedStudentForRfid] = useState<any>(null)
-  const [rfidCardNumber, setRfidCardNumber] = useState("")
-  const [rfidUpdateLoading, setRfidUpdateLoading] = useState(false)
-  const [rfidUpdateError, setRfidUpdateError] = useState<string | null>(null)
-
-  const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const matchesSearch =
-        studentFilters.search.trim().length === 0 ||
-        `${student.name} ${student.student_id}`.toLowerCase().includes(studentFilters.search.toLowerCase())
-      const matchesGrade =
-        studentFilters.grade === "All Grades" ||
-        student.grade_level?.toLowerCase() === studentFilters.grade.toLowerCase()
-      const matchesStatus =
-        studentFilters.status === "all" ||
-        (student.status || "Enrolled").toLowerCase() === studentFilters.status.toLowerCase()
-      return matchesSearch && matchesGrade && matchesStatus
-    })
-  }, [students, studentFilters])
-
-  // Fetch stats from API
-  const fetchStats = async () => {
-    setLoadingStats(true)
-    try {
-      const response = await fetch("/api/admin/stats")
-      const result = await response.json()
-      if (result.success && result.data) {
-        setStats(result.data)
-      }
-    } catch (error) {
-      console.error("Error fetching stats:", error)
-    } finally {
-      setLoadingStats(false)
-    }
-  }
-
-  // Fetch students from API
-  const fetchStudents = async () => {
-    setLoadingStudents(true)
-    try {
-      const response = await fetch("/api/admin/students")
-      const result = await response.json()
-      if (result.success && result.students) {
-        setStudents(result.students)
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error)
-    } finally {
-      setLoadingStudents(false)
-    }
-  }
-
-  const fetchAttendance = async () => {
-    setAttendanceLoading(true)
-    setAttendanceError(null)
-    try {
-      const response = await fetch("/api/admin/attendance")
-      
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text()
-        console.error("Non-JSON response:", text.substring(0, 200))
-        throw new Error("Server returned an invalid response. Please check the API endpoint.")
-      }
-      
-      const result = await response.json()
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to load attendance data.")
-      }
-      setAttendanceData(result.data)
-    } catch (error: any) {
-      console.error("Error fetching attendance:", error)
-      // Provide more user-friendly error message
-      if (error?.message?.includes("JSON") || error?.message?.includes("DOCTYPE")) {
-        setAttendanceError("Unable to connect to attendance service. Please check if the server is running.")
-      } else {
-        setAttendanceError(error?.message || "Unable to load attendance data.")
-      }
-    } finally {
-      setAttendanceLoading(false)
-    }
-  }
-
-  const fetchSettings = async () => {
-    setSettingsLoading(true)
-    setSettingsFeedback(null)
-    try {
-      const response = await fetch("/api/admin/settings")
-      
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text()
-        throw new Error(`Invalid response format: ${text.substring(0, 100)}`)
-      }
-      
-      const result = await response.json()
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to load settings.")
-      }
-      setSettingsForm(result.settings)
-    } catch (error: any) {
-      console.error("Error fetching settings:", error)
-      setSettingsFeedback(error?.message || "Unable to load settings.")
-    } finally {
-      setSettingsLoading(false)
-    }
-  }
-
-  const saveSettings = async () => {
-    setSettingsSaving(true)
-    setSettingsFeedback(null)
-    try {
-      const response = await fetch("/api/admin/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settingsForm),
-      })
-      const result = await response.json()
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to save settings.")
-      }
-      setSettingsForm(result.settings)
-      setSettingsFeedback("Settings saved successfully.")
-    } catch (error: any) {
-      console.error("Error saving settings:", error)
-      setSettingsFeedback(error?.message || "Unable to save settings.")
-    } finally {
-      setSettingsSaving(false)
-    }
-  }
-
-  // Check if admin is logged in on component mount
-  useEffect(() => {
-    const storedAdmin = localStorage.getItem("admin")
-    if (storedAdmin) {
-      try {
-        const adminData = JSON.parse(storedAdmin)
-        setAdmin(adminData)
-      } catch (error) {
-        console.error("Error parsing stored admin data:", error)
-        localStorage.removeItem("admin")
-      }
-    }
-    setIsLoading(false)
-  }, [])
-
-  useEffect(() => {
-    if (admin) {
-      // Wrap async calls to prevent unhandled promise rejections
-      Promise.all([
-        fetchStats().catch(err => console.error("Error in fetchStats:", err)),
-        fetchStudents().catch(err => console.error("Error in fetchStudents:", err)),
-        fetchAttendance().catch(err => console.error("Error in fetchAttendance:", err)),
-        fetchSettings().catch(err => console.error("Error in fetchSettings:", err)),
-      ])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [admin])
-
-  // Refresh attendance data when tab opened
-  useEffect(() => {
-    if (admin && activeTab === "attendance" && !attendanceData && !attendanceLoading) {
-      fetchAttendance().catch(err => console.error("Error in fetchAttendance:", err))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
-
-  // Fetch students when tab changes to students
-  useEffect(() => {
-    if (admin && activeTab === "students" && !loadingStudents) {
-      fetchStudents().catch(err => console.error("Error in fetchStudents:", err))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
-
-  // Fetch RFID scans
-  const fetchRfidScans = async () => {
-    setRfidScansLoading(true)
-    setRfidScansError(null)
-    try {
-      const response = await fetch("/api/admin/attendance-live?limit=100")
-      
-      // Check if response is OK
-      if (!response.ok) {
-        // Try to get error message
-        let errorText = "Server error"
-        try {
-          const contentType = response.headers.get("content-type")
-          if (contentType && contentType.includes("application/json")) {
-            const errorData = await response.json()
-            errorText = errorData.error || errorData.message || `HTTP ${response.status}`
-          } else {
-            errorText = `HTTP ${response.status}: ${response.statusText}`
-          }
-        } catch {
-          errorText = `HTTP ${response.status}: ${response.statusText}`
-        }
-        throw new Error(errorText)
-      }
-      
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text()
-        console.error("Non-JSON response received:", text.substring(0, 200))
-        throw new Error(`Invalid response format: ${text.substring(0, 100)}`)
-      }
-      
-      const result = await response.json()
-      if (result.success && result.records) {
-        setRfidScans(result.records)
-        setRfidScansError(null) // Clear any previous errors
-      } else {
-        setRfidScansError(result.error || result.warning || "Failed to load RFID scans.")
-        // Still set records if available (even if success is false)
-        if (result.records) {
-          setRfidScans(result.records)
-        }
-      }
-    } catch (error: any) {
-      console.error("Error fetching RFID scans:", error)
-      setRfidScansError(error?.message || "Unable to load RFID scans.")
-      // Don't clear existing scans on error - keep showing what we have
-    } finally {
-      setRfidScansLoading(false)
-    }
-  }
-
-  // Auto-refresh RFID scans every 5 seconds when tab is active
-  useEffect(() => {
-    if (admin && activeTab === "rfid-scans") {
-      fetchRfidScans().catch(err => console.error("Error in fetchRfidScans:", err))
-      const interval = setInterval(() => {
-        fetchRfidScans().catch(err => console.error("Error in fetchRfidScans:", err))
-      }, 5000) // Refresh every 5 seconds
-      return () => clearInterval(interval)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, admin])
-
-  // Update RFID card for student
-  const handleUpdateRfid = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setRfidUpdateError(null)
-
-    if (!rfidCardNumber.trim()) {
-      setRfidUpdateError("RFID card number is required.")
-      return
-    }
-
-    if (!selectedStudentForRfid) {
-      setRfidUpdateError("No student selected.")
-      return
-    }
-
-    setRfidUpdateLoading(true)
-
-    try {
-      const response = await fetch("/api/students/update-rfid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: selectedStudentForRfid.email,
-          rfidCard: rfidCardNumber.trim(),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        alert("RFID card updated successfully!")
-        setShowUpdateRfid(false)
-        setRfidCardNumber("")
-        setSelectedStudentForRfid(null)
-        setRfidUpdateError(null)
-        // Refresh the students list
-        fetchStudents()
-      } else {
-        setRfidUpdateError(data.error || "Failed to update RFID card. Please try again.")
-      }
-    } catch (error) {
-      console.error("Update RFID error:", error)
-      setRfidUpdateError("Error updating RFID card. Please try again.")
-    } finally {
-      setRfidUpdateLoading(false)
-    }
-  }
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoggingIn(true)
-    setLoginError(null)
-
-    try {
-      const response = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-      })
-
-      // Check if response is ok
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Network error occurred' }))
-        setLoginError(errorData.error || `Server error (${response.status}). Please try again.`)
-        return
-      }
-
-      const data = await response.json()
-
-      if (data.success && data.admin) {
-        setAdmin(data.admin)
-        localStorage.setItem("admin", JSON.stringify(data.admin))
-        setLoginEmail("")
-        setLoginPassword("")
-        setLoginError(null)
-      } else {
-        setLoginError(data.error || "Login failed. Please check your credentials.")
-      }
-    } catch (error: any) {
-      console.error("Login error:", error)
-      const errorMessage = error?.message || String(error) || ''
-      if (errorMessage && (errorMessage.includes('fetch') || errorMessage.includes('network'))) {
-        setLoginError("Network error. Please check your internet connection and try again.")
-      } else if (errorMessage && errorMessage.includes('Failed to fetch')) {
-        setLoginError("Cannot connect to the server. Please make sure the server is running.")
-      } else {
-        setLoginError(`An error occurred: ${errorMessage || 'Please try again.'}`)
-      }
-    } finally {
-      setIsLoggingIn(false)
-    }
-  }
-
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to log out?")) {
-      localStorage.removeItem("admin")
-      setAdmin(null)
-      window.location.href = "/"
-    }
-  }
-
-  // Generate next student ID
-  const generateNextStudentId = async () => {
-    try {
-      const response = await fetch("/api/admin/students")
-      const result = await response.json()
-      if (result.success && result.students && result.students.length > 0) {
-        // Find the highest student ID
-        const studentIds = result.students
-          .map((s: any) => {
-            const id = s.student_id || s.studentId || ""
-            // Extract numeric part if ID is in format like "2024-001" or "001"
-            const match = id.match(/\d+/)
-            return match ? parseInt(match[0]) : 0
-          })
-          .filter((id: number) => id > 0)
-        
-        const maxId = studentIds.length > 0 ? Math.max(...studentIds) : 0
-        const nextId = maxId + 1
-        // Format as YYYY-XXX (e.g., 2024-001)
-        const year = new Date().getFullYear()
-        return `${year}-${String(nextId).padStart(3, "0")}`
-      }
-    } catch (error) {
-      console.error("Error fetching students for ID generation:", error)
-    }
-    // Default: start with current year-001
-    const year = new Date().getFullYear()
-    return `${year}-001`
-  }
-
-  // Generate random password
-  const generatePassword = () => {
-    const length = 8
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let password = ""
-    for (let i = 0; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length))
-    }
-    return password
-  }
-
-  const handleAddStudent = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setStudentFormError(null)
-
-    if (!newStudent.name.trim() || !newStudent.section.trim()) {
-      setStudentFormError("Name and Section are required.")
-      return
-    }
-
-    if (!newStudent.gradeLevel) {
-      setStudentFormError("Please select a grade level.")
-      return
-    }
-
-    // Always auto-generate student ID (field is disabled, but ensure it's generated)
-    const studentId = await generateNextStudentId()
-
-    // Generate login credentials
-    const username = studentId // Use student ID as username
-    const password = generatePassword()
-    
-    try {
-      const response = await fetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...newStudent,
-          studentId: studentId,
-          username: username,
-          password: password,
-          firstLogin: true, // Flag for first-time login
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Show credentials modal
-        setNewStudentCredentials({
-          studentId: studentId,
-          username: username,
-          password: password,
-          name: newStudent.name,
-        })
-        setShowAddStudent(false)
-        setShowCredentialsModal(true)
-        setNewStudent({
-          name: "",
-          studentId: "",
-          gradeLevel: "",
-          section: "",
-          email: "",
-          phone: "",
-        })
-        setStudentFormError(null)
-        // Refresh the students list
-        fetchStudents()
-        fetchStats()
-      } else {
-        alert(data.error || "Failed to add student. Please try again.")
-      }
-    } catch (error) {
-      console.error("Add student error:", error)
-      alert("Error adding student. Please try again.")
-    }
-  }
-
-  const handleStudentStatusChange = (studentId: number, statusValue: string) => {
-    const formattedStatus = statusValue.charAt(0).toUpperCase() + statusValue.slice(1)
-    setStudents((prev) =>
-      prev.map((student) => (student.id === studentId ? { ...student, status: formattedStatus } : student)),
-    )
-  }
-
-  const handleFilterChange = (field: "search" | "grade" | "status", value: string) => {
-    setStudentFilters((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleSettingsInputChange = (field: keyof AdminSettings, value: string) => {
-    setSettingsForm((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleToggleSetting = (field: keyof AdminSettings) => {
-    setSettingsForm((prev) => ({ ...prev, [field]: !prev[field] }))
-  }
-
-  const getRate = (present: number, total: number) => {
-    if (!total) return "0.0"
-    return ((present / total) * 100).toFixed(1)
-  }
-
-  // Show loading state
-  if (isLoading) {
+  if (loading || !admin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-red-50">
         <div className="text-center">
-          <div className="text-xl font-bold text-red-800">Loading...</div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-800 border-t-transparent"></div>
+          <p className="mt-4 text-red-800 font-medium">Loading Admin Portal...</p>
         </div>
-      </div>
-    )
-  }
-
-  // Show login form if not authenticated
-  if (!admin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md border-gray-200">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <Image
-                src="/logo.png"
-                alt="Sto Niño de Praga Academy Logo"
-                width={80}
-                height={80}
-                className="rounded-full"
-              />
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-800">Admin Login</CardTitle>
-            <CardDescription>Sto Niño de Praga Academy</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-800">
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  className="border-gray-300"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-800">
-                  <Lock className="w-4 h-4 inline mr-2" />
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  className="border-gray-300"
-                />
-              </div>
-              {loginError && (
-                <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                  {loginError}
-                </div>
-              )}
-              <Button
-                type="submit"
-                className="w-full bg-red-800 hover:bg-red-700"
-                disabled={isLoggingIn}
-              >
-                {isLoggingIn ? "Logging in..." : "Login"}
-              </Button>
-              <div className="text-center">
-                <Link href="/" className="text-sm text-gray-600 hover:text-red-800">
-                  <Home className="w-4 h-4 inline mr-1" />
-                  Back to Home
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-md border-b-4 border-red-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Image
-                src="/logo.png"
-                alt="Sto Niño de Praga Academy Logo"
-                width={60}
-                height={60}
-                className="rounded-full"
-              />
-              <div>
-                <h1 className="text-xl font-bold text-red-800">Admin Portal</h1>
-                <p className="text-sm text-gray-600">Sto Niño de Praga Academy</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button
-                  variant="outline"
-                  className="border-red-800 text-red-800 hover:bg-red-800 hover:text-white bg-transparent"
-                >
-                  <Home className="w-4 h-4 mr-2" />
-                  Home
-                </Button>
-              </Link>
-              <div className="text-right">
-                <p className="font-medium text-red-800">
-                  {admin.name || admin.first_name || admin.email || "Admin User"}
-                </p>
-                <p className="text-sm text-gray-600">System Administrator</p>
-              </div>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                className="border-red-800 text-red-800 hover:bg-red-800 hover:text-white bg-transparent"
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
+      <AdminHeader admin={admin} />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+          <p className="text-gray-600">Welcome back! Here's an overview of your school.</p>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-8">
-            <TabsTrigger value="dashboard" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-              <LayoutDashboard className="w-4 h-4 mr-2" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="attendance" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-              <Clock className="w-4 h-4 mr-2" />
-              Attendance & RFID
-            </TabsTrigger>
-            <TabsTrigger value="rfid-scans" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-              <Radio className="w-4 h-4 mr-2" />
-              RFID Scans
-            </TabsTrigger>
-            <TabsTrigger value="students" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-              <Users className="w-4 h-4 mr-2" />
-              Student Management
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Reports & Analytics
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
-              <Settings className="w-4 h-4 mr-2" />
-              System Settings
-            </TabsTrigger>
-          </TabsList>
+        {/* Dashboard Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-red-50 to-white border-0 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-red-800">Total Students</CardTitle>
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Users className="h-5 w-5 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-900">
+                {loadingStats ? "..." : stats.totalStudents.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-600 mt-1">All grade levels</p>
+            </CardContent>
+          </Card>
 
-          {/* Admin Dashboard */}
-          <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="border-red-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-red-800">Total Students</CardTitle>
-                  <Users className="h-4 w-4 text-red-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-800">
-                    {loadingStats ? "..." : stats.totalStudents.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-gray-600">All grade levels</p>
-                </CardContent>
-              </Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-white border-0 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-800">Total Teachers</CardTitle>
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Shield className="h-5 w-5 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-900">
+                {loadingStats ? "..." : stats.totalTeachers.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-600 mt-1">Active faculty</p>
+            </CardContent>
+          </Card>
 
-              <Card className="border-red-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-red-800">Total Teachers</CardTitle>
-                  <Shield className="h-4 w-4 text-red-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-800">
-                    {loadingStats ? "..." : stats.totalTeachers.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-gray-600">Active teachers</p>
-                </CardContent>
-              </Card>
+          <Card className="bg-gradient-to-br from-orange-50 to-white border-0 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-800">Total Parents</CardTitle>
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <UserCog className="h-5 w-5 text-orange-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-900">
+                {loadingStats ? "..." : stats.totalParents}
+              </div>
+              <p className="text-xs text-gray-600 mt-1">Active guardians</p>
+            </CardContent>
+          </Card>
 
-              <Card className="border-red-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-red-800">Monthly Revenue</CardTitle>
-                  <DollarSign className="h-4 w-4 text-red-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-800">₱2.4M</div>
-                  <p className="text-xs text-gray-600">This month</p>
-                </CardContent>
-              </Card>
+          <Card className="bg-gradient-to-br from-green-50 to-white border-0 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-green-800">Attendance Rate</CardTitle>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Activity className="h-5 w-5 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-900">
+                {loadingStats ? "..." : `${stats.attendanceRate}%`}
+              </div>
+              <p className="text-xs text-gray-600 mt-1">Today's attendance</p>
+            </CardContent>
+          </Card>
 
-              <Card className="border-red-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-red-800">Attendance Rate</CardTitle>
-                  <Calendar className="h-4 w-4 text-red-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-800">94.2%</div>
-                  <p className="text-xs text-gray-600">Overall average</p>
-                </CardContent>
-              </Card>
-            </div>
+          <Card className="bg-gradient-to-br from-purple-50 to-white border-0 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-purple-800">System Status</CardTitle>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <DollarSign className="h-5 w-5 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">Active</div>
+              <p className="text-xs text-gray-600 mt-1">All systems operational</p>
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-red-800">Recent Activities</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Shield className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <p className="font-medium">New teacher registered</p>
-                        <p className="text-sm text-gray-600">Maria Santos - Mathematics</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Users className="w-4 h-4 text-green-600" />
-                      <div>
-                        <p className="font-medium">Student enrollment completed</p>
-                        <p className="text-sm text-gray-600">25 new students for Grade 7</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <FileText className="w-4 h-4 text-purple-600" />
-                      <div>
-                        <p className="font-medium">Monthly report generated</p>
-                        <p className="text-sm text-gray-600">Academic performance summary</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Management Sections */}
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Management</h3>
+        </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-red-800">System Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">RFID System</span>
-                      <Badge className="bg-green-100 text-green-800">Online</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Student Portal</span>
-                      <Badge className="bg-green-100 text-green-800">Running</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Teacher Portal</span>
-                      <Badge className="bg-green-100 text-green-800">Active</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Database Backup</span>
-                      <Badge className="bg-blue-100 text-blue-800">Scheduled</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <Link
+            href="/admin/students"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <Users className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Student Management</h3>
+            <p className="text-sm text-gray-600">Manage student records and profiles</p>
+          </Link>
 
-          {/* Attendance and RFID */}
-          <TabsContent value="attendance" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-red-800">Attendance and RFID Management</CardTitle>
-                    <CardDescription>Monitor attendance records and RFID system</CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchAttendance}
-                    disabled={attendanceLoading}
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCcw className={`w-4 h-4 ${attendanceLoading ? "animate-spin" : ""}`} />
-                    Refresh
-                  </Button>
-                </div>
-                {attendanceError && (
-                  <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-md p-3 mt-3">
-                    <AlertCircle className="w-4 h-4 mt-0.5" />
-                    <span>{attendanceError}</span>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {attendanceLoading ? (
-                  <div className="text-center py-8 text-gray-500">Loading attendance data...</div>
-                ) : attendanceData ? (
-                  <div className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium">Today's Attendance</h4>
-                          <Badge variant="outline" className="text-green-700 border-green-200">
-                            Updated {attendanceData.summary.lastSync}
-                          </Badge>
-                        </div>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span>Students Present</span>
-                            <span className="font-semibold">
-                              {attendanceData.summary.presentStudents.toLocaleString()} /{" "}
-                              {attendanceData.summary.totalStudents.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Teachers Present</span>
-                            <span className="font-semibold">
-                              {attendanceData.summary.presentTeachers.toLocaleString()} /{" "}
-                              {attendanceData.summary.totalTeachers.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-green-700">
-                            <span>Overall Rate</span>
-                            <span className="font-semibold">
-                              {getRate(
-                                attendanceData.summary.presentStudents + attendanceData.summary.presentTeachers,
-                                attendanceData.summary.totalStudents + attendanceData.summary.totalTeachers,
-                              )}
-                              %
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium flex items-center gap-2">
-                            <Wifi className="w-4 h-4 text-red-700" />
-                            RFID System Status
-                          </h4>
-                          <Badge
-                            className={`${
-                              attendanceData.rfid.status === "online"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {attendanceData.rfid.status === "online" ? "Online" : "Degraded"}
-                          </Badge>
-                        </div>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span>Active Cards</span>
-                            <span className="font-semibold">{attendanceData.rfid.activeCards.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Pending Activations</span>
-                            <span className="font-semibold">{attendanceData.rfid.pendingActivations}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Offline Readers</span>
-                            <span
-                              className={`font-semibold ${
-                                attendanceData.rfid.offlineReaders > 0 ? "text-red-600" : "text-green-700"
-                              }`}
-                            >
-                              {attendanceData.rfid.offlineReaders}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-3 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-red-700" />
-                        System Alerts
-                      </h4>
-                      {!attendanceData.recentAlerts || attendanceData.recentAlerts.length === 0 ? (
-                        <p className="text-sm text-gray-500">No alerts today.</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {attendanceData.recentAlerts.map((alert: any) => (
-                            <div
-                              key={alert.id}
-                              className="flex items-center justify-between border border-gray-100 rounded-lg p-3 text-sm"
-                            >
-                              <div className="flex items-center gap-2">
-                                <AlertCircle
-                                  className={`w-4 h-4 ${
-                                    alert.type === "warning"
-                                      ? "text-yellow-600"
-                                      : alert.type === "error"
-                                      ? "text-red-600"
-                                      : "text-blue-600"
-                                  }`}
-                                />
-                                <div>
-                                  <p className="font-medium text-gray-900">{alert.message}</p>
-                                  <p className="text-xs text-gray-500">Logged at {alert.timestamp}</p>
-                                </div>
-                              </div>
-                              <Badge variant="outline" className="border-gray-200">
-                                RFID
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    Attendance data unavailable. Please refresh.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Link
+            href="/admin/teachers"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <Shield className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Teacher Management</h3>
+            <p className="text-sm text-gray-600">Manage teacher accounts and info</p>
+          </Link>
 
-          {/* RFID Scans Tab */}
-          <TabsContent value="rfid-scans" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-red-800">RFID Scan Records</CardTitle>
-                    <CardDescription>View real-time RFID card scans and attendance records</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open("/admin/rfid-display", "_blank")}
-                      className="flex items-center gap-2"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                      Open in New Window
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fetchRfidScans}
-                      disabled={rfidScansLoading}
-                      className="flex items-center gap-2"
-                    >
-                      <RefreshCcw className={`w-4 h-4 ${rfidScansLoading ? "animate-spin" : ""}`} />
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
-                {rfidScansError && (
-                  <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-md p-3 mt-3">
-                    <AlertCircle className="w-4 h-4 mt-0.5" />
-                    <span>{rfidScansError}</span>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {rfidScansLoading && rfidScans.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">Loading RFID scans...</div>
-                ) : rfidScans.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No RFID scans found. Scans will appear here when students scan their cards.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="text-sm text-gray-600 mb-4">
-                      Showing {rfidScans.length} recent scans (auto-refreshes every 5 seconds)
-                    </div>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Time</TableHead>
-                            <TableHead>Student Name</TableHead>
-                            <TableHead>Student ID</TableHead>
-                            <TableHead>Grade Level</TableHead>
-                            <TableHead>Section</TableHead>
-                            <TableHead>RFID Card</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {rfidScans.map((scan) => (
-                            <TableRow key={scan.id}>
-                              <TableCell className="font-mono text-sm">
-                                {new Date(scan.scanTime).toLocaleString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  second: "2-digit",
-                                })}
-                              </TableCell>
-                              <TableCell className="font-medium">{scan.studentName}</TableCell>
-                              <TableCell className="font-mono text-sm">{scan.studentId || "N/A"}</TableCell>
-                              <TableCell>{scan.gradeLevel}</TableCell>
-                              <TableCell>{scan.section}</TableCell>
-                              <TableCell className="font-mono text-sm">{scan.rfidCard}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={
-                                    scan.status === "Present"
-                                      ? "bg-green-100 text-green-800"
-                                      : scan.status === "Late"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-red-100 text-red-800"
-                                  }
-                                >
-                                  {scan.status}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Link
+            href="/admin/parents"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <UserCog className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Parent Management</h3>
+            <p className="text-sm text-gray-600">Manage parent/guardian accounts</p>
+          </Link>
 
-          {/* Student Management */}
-          <TabsContent value="students" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-red-800">Student Management</CardTitle>
-                <CardDescription>Manage student records, enrollment, and academic information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Student Records</h4>
-                    <Dialog open={showAddStudent} onOpenChange={setShowAddStudent}>
-                      <DialogTrigger asChild>
-                        <Button className="bg-red-800 hover:bg-red-700">Add New Student</Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle className="text-red-800">Add New Student</DialogTitle>
-                          <DialogDescription>Enter the student's information to add them to the system</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleAddStudent} className="space-y-4">
-                          <div>
-                            <Label htmlFor="studentName">Full Name *</Label>
-                            <Input
-                              id="studentName"
-                              value={newStudent.name}
-                              onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="studentId">Student ID *</Label>
-                            <Input
-                              id="studentId"
-                              value={newStudent.studentId}
-                              disabled
-                              readOnly
-                              className="bg-gray-100 cursor-not-allowed"
-                              placeholder="Will be auto-generated"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Auto-generated upon submission</p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="gradeLevel">Grade Level *</Label>
-                              <Select
-                                value={newStudent.gradeLevel}
-                                onValueChange={(value) => setNewStudent({ ...newStudent, gradeLevel: value })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select grade" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Grade 1">Grade 1</SelectItem>
-                                  <SelectItem value="Grade 2">Grade 2</SelectItem>
-                                  <SelectItem value="Grade 3">Grade 3</SelectItem>
-                                  <SelectItem value="Grade 4">Grade 4</SelectItem>
-                                  <SelectItem value="Grade 5">Grade 5</SelectItem>
-                                  <SelectItem value="Grade 6">Grade 6</SelectItem>
-                                  <SelectItem value="Grade 7">Grade 7</SelectItem>
-                                  <SelectItem value="Grade 8">Grade 8</SelectItem>
-                                  <SelectItem value="Grade 9">Grade 9</SelectItem>
-                                  <SelectItem value="Grade 10">Grade 10</SelectItem>
-                                  <SelectItem value="Grade 11">Grade 11</SelectItem>
-                                  <SelectItem value="Grade 12">Grade 12</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="section">Section *</Label>
-                              <Input
-                                id="section"
-                                value={newStudent.section}
-                                onChange={(e) => setNewStudent({ ...newStudent, section: e.target.value })}
-                                required
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              value={newStudent.email}
-                              onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="phone">Phone Number</Label>
-                            <Input
-                              id="phone"
-                              type="tel"
-                              value={newStudent.phone}
-                              onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
-                            />
-                          </div>
-                          <div className="flex justify-end space-x-2">
-                            {studentFormError && (
-                              <p className="text-sm text-red-600 flex-1">{studentFormError}</p>
-                            )}
-                            <Button type="button" variant="outline" onClick={() => setShowAddStudent(false)}>
-                              Cancel
-                            </Button>
-                            <Button type="submit" className="bg-red-800 hover:bg-red-700">
-                              Add Student
-                            </Button>
-                          </div>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+          <Link
+            href="/admin/attendance"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <CalendarCheck className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Attendance</h3>
+            <p className="text-sm text-gray-600">Track and manage attendance records</p>
+          </Link>
 
-                    {/* Credentials Modal */}
-                    <Dialog open={showCredentialsModal} onOpenChange={setShowCredentialsModal}>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle className="text-red-800">Student Registration Successful</DialogTitle>
-                          <DialogDescription>
-                            Please provide these login credentials to the student. They will be required to change their password on first login.
-                          </DialogDescription>
-                        </DialogHeader>
-                        {newStudentCredentials && (
-                          <div className="space-y-4 py-4">
-                            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                              <div>
-                                <Label className="text-sm text-gray-600">Student Name</Label>
-                                <p className="font-semibold text-lg">{newStudentCredentials.name}</p>
-                              </div>
-                              <div>
-                                <Label className="text-sm text-gray-600">Student ID / Username</Label>
-                                <p className="font-mono font-semibold text-lg bg-white p-2 rounded border">{newStudentCredentials.username}</p>
-                              </div>
-                              <div>
-                                <Label className="text-sm text-gray-600">Temporary Password</Label>
-                                <p className="font-mono font-semibold text-lg bg-white p-2 rounded border text-red-600">{newStudentCredentials.password}</p>
-                              </div>
-                              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
-                                <p className="text-sm text-yellow-800">
-                                  <strong>Important:</strong> The student must change their password and complete their profile on first login.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex justify-end">
-                              <Button
-                                onClick={() => {
-                                  setShowCredentialsModal(false)
-                                  setNewStudentCredentials(null)
-                                }}
-                                className="bg-red-800 hover:bg-red-700"
-                              >
-                                Close
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <div className="flex flex-wrap gap-3 items-center">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Filter className="w-4 h-4" />
-                      <span>Filter records</span>
-                    </div>
-                    <Input
-                      placeholder="Search by name or ID"
-                      value={studentFilters.search}
-                      onChange={(e) => handleFilterChange("search", e.target.value)}
-                      className="w-full md:w-1/3"
-                    />
-                    <Select value={studentFilters.grade} onValueChange={(value) => handleFilterChange("grade", value)}>
-                      <SelectTrigger className="w-full md:w-48">
-                        <SelectValue placeholder="Grade level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {gradeOptions.map((grade) => (
-                          <SelectItem key={grade} value={grade}>
-                            {grade}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={studentFilters.status}
-                      onValueChange={(value) => handleFilterChange("status", value)}
-                    >
-                      <SelectTrigger className="w-full md:w-48">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        {studentStatusOptions.map((status) => (
-                          <SelectItem key={status} value={status.toLowerCase()}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Student ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Grade Level</TableHead>
-                        <TableHead>Section</TableHead>
-                        <TableHead>RFID Card</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loadingStudents ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-gray-500">
-                            Loading students...
-                          </TableCell>
-                        </TableRow>
-                      ) : filteredStudents.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-gray-500">
-                            No students match the current filters.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredStudents.map((student) => (
-                          <TableRow key={student.id}>
-                            <TableCell>{student.student_id || "N/A"}</TableCell>
-                            <TableCell>{student.name || "N/A"}</TableCell>
-                            <TableCell>{student.grade_level || "N/A"}</TableCell>
-                            <TableCell>{student.section || "N/A"}</TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {student.rfid_card || student.rfidCard || student.rfid_tag || (
-                                <span className="text-gray-400 italic">Not assigned</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={(student.status || "Enrolled").toLowerCase()}
-                                onValueChange={(value) => handleStudentStatusChange(student.id, value)}
-                              >
-                                <SelectTrigger className="w-32 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {studentStatusOptions.map((status) => (
-                                    <SelectItem key={status} value={status.toLowerCase()}>
-                                      {status}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedStudentForRfid(student)
-                                  setRfidCardNumber(student.rfid_card || student.rfidCard || student.rfid_tag || "")
-                                  setShowUpdateRfid(true)
-                                }}
-                                className="text-xs"
-                              >
-                                <Radio className="w-3 h-3 mr-1" />
-                                Update RFID
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+          <Link
+            href="/admin/live-attendance"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <Radio className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Live Attendance</h3>
+            <p className="text-sm text-gray-600">Real-time attendance tracking</p>
+          </Link>
 
-                  {/* Update RFID Dialog */}
-                  <Dialog open={showUpdateRfid} onOpenChange={setShowUpdateRfid}>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle className="text-red-800">Update RFID Card</DialogTitle>
-                        <DialogDescription>
-                          Assign or update RFID card for {selectedStudentForRfid?.name || "student"}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleUpdateRfid} className="space-y-4">
-                        <div>
-                          <Label htmlFor="studentInfo">Student Information</Label>
-                          <div className="bg-gray-50 p-3 rounded border">
-                            <p className="font-semibold">{selectedStudentForRfid?.name || "N/A"}</p>
-                            <p className="text-sm text-gray-600">
-                              {selectedStudentForRfid?.student_id || "N/A"} | {selectedStudentForRfid?.email || "N/A"}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="rfidCard">RFID Card Number *</Label>
-                          <Input
-                            id="rfidCard"
-                            value={rfidCardNumber}
-                            onChange={(e) => setRfidCardNumber(e.target.value)}
-                            placeholder="Enter RFID card UID (e.g., 326e2ab)"
-                            required
-                            className="font-mono"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Enter the RFID card UID as scanned by the ESP32 device
-                          </p>
-                        </div>
-                        {rfidUpdateError && (
-                          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-sm">
-                            {rfidUpdateError}
-                          </div>
-                        )}
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setShowUpdateRfid(false)
-                              setRfidCardNumber("")
-                              setSelectedStudentForRfid(null)
-                              setRfidUpdateError(null)
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button type="submit" disabled={rfidUpdateLoading} className="bg-red-800 hover:bg-red-700">
-                            {rfidUpdateLoading ? "Updating..." : "Update RFID"}
-                          </Button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Link
+            href="/admin/attendance-reports"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <ClipboardList className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Student Attendance</h3>
+            <p className="text-sm text-gray-600">Track student attendance records</p>
+          </Link>
 
-          {/* Reports and Analytics */}
-          <TabsContent value="reports" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-red-800">Reports and Analytics</CardTitle>
-                <CardDescription>Generate and view various school reports and analytics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="border-blue-200">
-                    <CardHeader>
-                      <CardTitle className="text-sm">Academic Reports</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Link href="/admin/teacher-attendance">
-                        <Button variant="outline" className="w-full mb-2 bg-transparent hover:bg-red-50">
-                          Teacher Attendance Analytics
-                        </Button>
-                      </Link>
-                      <Button variant="outline" className="w-full mb-2 bg-transparent">
-                        Grade Reports
-                      </Button>
-                      <Link href="/admin/attendance-reports">
-                        <Button variant="outline" className="w-full mb-2 bg-transparent hover:bg-red-50">
-                          Attendance Reports
-                        </Button>
-                      </Link>
-                      <Button variant="outline" className="w-full mb-2 bg-transparent">
-                        Performance Analytics
-                      </Button>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        Student Progress Reports
-                      </Button>
-                    </CardContent>
-                  </Card>
+          <Link
+            href="/admin/teacher-attendance"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <UserCheck className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Teacher Attendance</h3>
+            <p className="text-sm text-gray-600">Track teacher attendance records</p>
+          </Link>
 
-                  <Card className="border-green-200">
-                    <CardHeader>
-                      <CardTitle className="text-sm">Administrative Reports</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Button variant="outline" className="w-full mb-2 bg-transparent">
-                        Enrollment Reports
-                      </Button>
-                      <Button variant="outline" className="w-full mb-2 bg-transparent">
-                        Financial Reports
-                      </Button>
-                      <Button variant="outline" className="w-full mb-2 bg-transparent">
-                        System Usage Reports
-                      </Button>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        Custom Reports
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Link
+            href="/admin/reports"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <FileText className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Reports & Analytics</h3>
+            <p className="text-sm text-gray-600">Generate and view reports</p>
+          </Link>
 
-          {/* System Settings */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-red-800">System Settings</CardTitle>
-                <CardDescription>Configure system preferences and administrative settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {settingsLoading ? (
-                  <div className="text-center py-6 text-gray-500">Loading settings...</div>
-                ) : (
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="font-medium mb-4">General Settings</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="schoolName">School Name</Label>
-                          <Input
-                            id="schoolName"
-                            value={settingsForm.schoolName}
-                            onChange={(e) => handleSettingsInputChange("schoolName", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="academicYear">Academic Year</Label>
-                          <Input
-                            id="academicYear"
-                            value={settingsForm.academicYear}
-                            onChange={(e) => handleSettingsInputChange("academicYear", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
+          <Link
+            href="/admin/rfid-display"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <CalendarDays className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">RFID Display</h3>
+            <p className="text-sm text-gray-600">Monitor RFID scans in real-time</p>
+          </Link>
 
-                    <div>
-                      <h4 className="font-medium mb-4">System Configuration</h4>
-                      <div className="space-y-4">
-                        {[
-                          { label: "Automatic Backup", field: "automaticBackup", description: "Daily off-site backups" },
-                          { label: "RFID Integration", field: "rfidIntegration", description: "Sync attendance readers" },
-                          { label: "Email Notifications", field: "emailNotifications", description: "Send alerts to guardians" },
-                          { label: "Student Portal Access", field: "studentPortal", description: "Allow student logins" },
-                          { label: "Teacher Portal Access", field: "teacherPortal", description: "Enable teacher dashboard" },
-                        ].map((item) => (
-                          <label key={item.field} className="flex items-start justify-between gap-4">
-                            <div>
-                              <span className="block font-medium text-sm">{item.label}</span>
-                              <span className="text-xs text-gray-500">{item.description}</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              className="h-5 w-5 rounded border-gray-300 text-red-700 focus:ring-red-500"
-                              checked={settingsForm[item.field as keyof AdminSettings] as boolean}
-                              onChange={() => handleToggleSetting(item.field as keyof AdminSettings)}
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    {settingsFeedback && (
-                      <div className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-md p-3">
-                        {settingsFeedback}
-                      </div>
-                    )}
-
-                    <Button
-                      className="bg-red-800 hover:bg-red-700"
-                      onClick={saveSettings}
-                      disabled={settingsSaving}
-                    >
-                      {settingsSaving ? "Saving..." : "Save Settings"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+          <Link
+            href="/admin/settings"
+            className="group block p-6 bg-white border-2 border-red-200 rounded-lg hover:border-red-400 hover:shadow-lg transition-all"
+          >
+            <Settings className="w-8 h-8 text-red-600 mb-4 group-hover:scale-110 transition-transform" />
+            <h3 className="font-semibold text-xl mb-2 text-gray-900">Settings</h3>
+            <p className="text-sm text-gray-600">Configure system preferences</p>
+          </Link>
+        </div>
+      </main>
     </div>
   )
 }

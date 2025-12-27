@@ -1,59 +1,85 @@
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
 
 export async function GET() {
   try {
+    const supabaseAdmin = getSupabaseAdmin()
+
     // Fetch students count
-    const { count: studentsCount, error: studentsError } = await supabase
-      .from('students')
+    const { count: studentsCount, error: studentsError } = await supabaseAdmin
+      .from('users')
       .select('*', { count: 'exact', head: true })
+      .eq('role', 'student')
 
     // Fetch teachers count
-    const { count: teachersCount, error: teachersError } = await supabase
-      .from('teachers')
+    const { count: teachersCount, error: teachersError } = await supabaseAdmin
+      .from('users')
       .select('*', { count: 'exact', head: true })
+      .eq('role', 'teacher')
 
-    if (studentsError || teachersError) {
+    // Fetch parents count
+    const { count: parentsCount, error: parentsError } = await supabaseAdmin
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'parent')
+
+    if (studentsError || teachersError || parentsError) {
       console.error('Database error:', { studentsError, teachersError })
-      // Return mock data if database is not available
       return NextResponse.json({
-        success: true,
+        success: false,
+        error: 'Failed to fetch stats',
         data: {
           totalStudents: 0,
           totalTeachers: 0,
+          totalParents: 0,
           attendanceRate: 0,
         },
-        mock: true,
-      })
+      }, { status: 500 })
     }
 
-    // Calculate attendance (this would need actual attendance data)
-    // For now, we'll return 0 and calculate it later when we have attendance table
-    const attendanceRate = 0
+    // Calculate today's attendance rate
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Get total students for attendance calculation
+    const totalStudents = studentsCount || 0
+    
+    // Get today's attendance records
+    const { data: attendanceRecords, error: attendanceError } = await supabaseAdmin
+      .from('attendance')
+      .select('student_id')
+      .gte('scanned_at', `${today}T00:00:00`)
+      .lte('scanned_at', `${today}T23:59:59`)
+
+    let attendanceRate = 0
+    if (!attendanceError && attendanceRecords && totalStudents > 0) {
+      // Count unique students who attended today
+      const uniqueStudents = new Set(attendanceRecords.map((record: any) => record.student_id))
+      attendanceRate = Math.round((uniqueStudents.size / totalStudents) * 100)
+    }
 
     return NextResponse.json({
       success: true,
       data: {
         totalStudents: studentsCount || 0,
         totalTeachers: teachersCount || 0,
+        totalParents: parentsCount || 0,
         attendanceRate,
       },
     })
   } catch (error: any) {
     console.error('Admin stats API error:', error)
-    // Return 200 with error message instead of 500 to prevent Internal Server Error page
     return NextResponse.json(
       {
-        success: true, // Return success with mock data to prevent frontend crash
-        error: error?.message || 'Database connection error',
+        success: false,
+        error: error?.message || 'Internal server error',
         data: {
           totalStudents: 0,
           totalTeachers: 0,
+          totalParents: 0,
           attendanceRate: 0,
         },
-        mock: true,
       },
-      { status: 200 } // Always return 200, never 500
+      { status: 500 }
     )
   }
 }

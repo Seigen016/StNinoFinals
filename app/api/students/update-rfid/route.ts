@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +46,9 @@ export async function POST(request: Request) {
     if (updateData.email) {
       // Find by email
       const { data, error } = await admin
-        .from('students')
+        .from('users')
         .select('*')
+        .eq('role', 'student')
         .eq('email', updateData.email.toLowerCase().trim())
         .limit(10)
       students = data || []
@@ -55,18 +56,17 @@ export async function POST(request: Request) {
     } else if (updateData.studentId) {
       // Find by student ID - get all and filter in memory to avoid column errors
       const { data: allStudents, error } = await admin
-        .from('students')
+        .from('users')
         .select('*')
+        .eq('role', 'student')
         .limit(1000)
       
       if (!error && allStudents) {
         students = allStudents.filter((s: any) => {
-          const id1 = (s.student_id || '').toString()
-          const id2 = (s.student_number || '').toString()
-          const id3 = (s.id || '').toString()
-          const id4 = (s.studentId || '').toString()
+          const num1 = (s.student_number || '').toString()
+          const id = (s.id || '').toString()
           const searchId = updateData.studentId.toString()
-          return id1 === searchId || id2 === searchId || id3 === searchId || id4 === searchId
+          return num1 === searchId || id === searchId
         })
       } else {
         findError = error
@@ -91,11 +91,8 @@ export async function POST(request: Request) {
     const student = students[0]
 
     // Update student with RFID card number
-    // Try to update rfid_card first (what ESP32 expects)
-    // Also try rfid_tag as fallback
     const updateFields: any = {
-      rfid_card: updateData.rfidCard,  // Primary - what ESP32 looks for
-      rfid_tag: updateData.rfidCard    // Fallback
+      rfid: updateData.rfidCard  // Single rfid column in new schema
     }
 
     console.log('Updating student with RFID:', updateData.rfidCard)
@@ -103,7 +100,7 @@ export async function POST(request: Request) {
     console.log('Student email:', student.email)
 
     const { data: updatedStudent, error: updateError } = await admin
-      .from('students')
+      .from('users')
       .update(updateFields)
       .eq('id', student.id)
       .select()
@@ -116,14 +113,13 @@ export async function POST(request: Request) {
       // Check if error is about missing column
       if (updateError.message && (
         (updateError.message.includes('column') && updateError.message.includes('does not exist')) ||
-        updateError.message.includes('rfid_tag') ||
-        updateError.message.includes('rfid_card')
+        updateError.message.includes('rfid')
       )) {
         return NextResponse.json(
           { 
             success: false, 
-            error: `RFID column not found in database. Please add an 'rfid_card' column to your 'students' table in Supabase.`,
-            hint: 'Run this SQL in Supabase: ALTER TABLE students ADD COLUMN rfid_card TEXT;'
+            error: `RFID column not found in database. Please add an 'rfid' column to your 'users' table in Supabase.`,
+            hint: 'Run this SQL in Supabase: ALTER TABLE users ADD COLUMN rfid TEXT;'
           },
           { status: 500 }
         )

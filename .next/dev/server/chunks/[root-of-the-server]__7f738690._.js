@@ -86,7 +86,20 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/@supabase+supabase-js@2.78.0/node_modules/@supabase/supabase-js/dist/module/index.js [app-route] (ecmascript) <locals>");
 ;
-const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
+/**
+ * Supabase Admin Client for Server-Side Operations
+ * 
+ * ⚠️ SECURITY WARNING: This client uses the SERVICE ROLE KEY
+ * - Bypasses ALL Row Level Security (RLS) policies
+ * - Full database access with no restrictions
+ * - ONLY use in server-side code (API routes, Server Components)
+ * - NEVER import or use in client-side components
+ * 
+ * Use Cases:
+ * - Admin operations requiring elevated privileges
+ * - System-level database operations
+ * - Background jobs and cron tasks
+ */ const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 function getSupabaseAdmin() {
     if (!supabaseUrl || !serviceRoleKey) {
@@ -106,25 +119,25 @@ function getSupabaseAdmin() {
 // lib/supabaseClient.ts
 __turbopack_context__.s([
     "supabase",
-    ()=>supabase,
-    "supabaseAdmin",
-    ()=>supabaseAdmin
+    ()=>supabase
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/@supabase+supabase-js@2.78.0/node_modules/@supabase/supabase-js/dist/module/index.js [app-route] (ecmascript) <locals>");
 ;
-// Get environment variables
+/**
+ * Supabase Client for Client-Side Operations
+ * 
+ * This client uses the ANON key and is safe to use in browser code.
+ * It respects Row Level Security (RLS) policies in Supabase.
+ * 
+ * DO NOT use service role key here - it bypasses RLS and is a security risk.
+ * For admin operations, use getSupabaseAdmin() in server-side code only.
+ */ // Get environment variables
 const supabaseUrl = ("TURBOPACK compile-time value", "https://ulntyefamkxkbynrugop.supabase.co");
 const supabaseAnonKey = ("TURBOPACK compile-time value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsbnR5ZWZhbWt4a2J5bnJ1Z29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MjgwNDEsImV4cCI6MjA3NjIwNDA0MX0.TnL8jfBVJD8Z0N5rFl_KFhAku8zxiy2fFvztBDYHaWk");
 // Validate that environment variables are set
 if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
 ;
 const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
-const supabaseAdmin = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f40$supabase$2b$supabase$2d$js$40$2$2e$78$2e$0$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY || '', {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-});
 }),
 "[project]/app/api/admin/students/route.ts [app-route] (ecmascript)", ((__turbopack_context__) => {
 "use strict";

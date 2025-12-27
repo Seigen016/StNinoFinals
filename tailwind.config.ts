@@ -11,6 +11,17 @@ const config: Config = {
     "*.{js,ts,jsx,tsx,mdx}"
   ],
   theme: {
+  	fontSize: {
+  		'xs': '0.7rem',
+  		'sm': '0.8rem',
+  		'base': '0.875rem',
+  		'lg': '1rem',
+  		'xl': '1.125rem',
+  		'2xl': '1.25rem',
+  		'3xl': '1.5rem',
+  		'4xl': '1.75rem',
+  		'5xl': '2rem',
+  	},
   	extend: {
   		colors: {
   			background: 'hsl(var(--background))',

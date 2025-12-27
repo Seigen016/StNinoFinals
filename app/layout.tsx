@@ -1,7 +1,8 @@
-import { GeistMono } from 'geist/font/mono'
-import { GeistSans } from 'geist/font/sans'
-import type { Metadata } from 'next'
-import './globals.css'
+import { GeistMono } from 'geist/font/mono';
+import { GeistSans } from 'geist/font/sans';
+import type { Metadata } from 'next';
+import './globals.css';
+import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'St. Nino de Praga Academy',
@@ -16,7 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body suppressHydrationWarning className={GeistSans.className}>{children}</body>
+      <Providers>
+        <body suppressHydrationWarning className={GeistSans.className}>{children}</body>
+      </Providers>
     </html>
   )
 }

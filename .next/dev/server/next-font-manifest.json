@@ -4,11 +4,27 @@
       "static/media/GeistMono_Variable.p.73882635.woff2",
       "static/media/Geist_Variable-s.p.f19e4721.woff2"
     ],
+    "[project]/app/admin/attendance/page": [
+      "static/media/GeistMono_Variable.p.73882635.woff2",
+      "static/media/Geist_Variable-s.p.f19e4721.woff2"
+    ],
+    "[project]/app/admin/live-attendance/page": [
+      "static/media/GeistMono_Variable.p.73882635.woff2",
+      "static/media/Geist_Variable-s.p.f19e4721.woff2"
+    ],
     "[project]/app/admin/page": [
       "static/media/GeistMono_Variable.p.73882635.woff2",
       "static/media/Geist_Variable-s.p.f19e4721.woff2"
     ],
-    "[project]/app/admin/teacher-attendance/page": [
+    "[project]/app/admin/parents/page": [
+      "static/media/GeistMono_Variable.p.73882635.woff2",
+      "static/media/Geist_Variable-s.p.f19e4721.woff2"
+    ],
+    "[project]/app/admin/rfid-display/page": [
+      "static/media/GeistMono_Variable.p.73882635.woff2",
+      "static/media/Geist_Variable-s.p.f19e4721.woff2"
+    ],
+    "[project]/app/admin/teachers/page": [
       "static/media/GeistMono_Variable.p.73882635.woff2",
       "static/media/Geist_Variable-s.p.f19e4721.woff2"
     ],

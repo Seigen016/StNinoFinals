@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Radio, RefreshCcw, X, LogIn, LogOut, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { supabase } from "@/lib/supabaseClient"
+import { useAlert } from "@/lib/use-alert"
+import { LogIn, LogOut, Radio, RefreshCcw, User } from "lucide-react"
+import Image from "next/image"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 interface AttendanceRecord {
   id: string
@@ -37,12 +39,13 @@ export default function RfidDisplayPage() {
   const [currentTime, setCurrentTime] = useState<string>("")
   const [timeoutModeActive, setTimeoutModeActive] = useState(false)
   const [timeoutCountdown, setTimeoutCountdown] = useState(0)
+  const { showAlert } = useAlert()
 
   const fetchLiveAttendance = useCallback(async (onlyNew = false) => {
     setLoadingAttendance(true)
     try {
       const url = onlyNew && lastScanTime
-        ? `/api/admin/attendance-live?since=${lastScanTime}&limit=1`
+        ? `/api/admin/attendance-live?since=${encodeURIComponent(lastScanTime)}&limit=1`
         : `/api/admin/attendance-live?limit=1`
       
       const response = await fetch(url)
@@ -71,41 +74,37 @@ export default function RfidDisplayPage() {
         const latest = result.records[0]
         console.log('✅ Latest scan:', latest)
         
-        // Check if this is a NEW scan (different from current latest scan)
-        const isNewScan = !latestScan || 
-                         latest.id !== latestScan.id || 
-                         latest.scanTime !== latestScan.scanTime
+        // Update using functional state updates to avoid dependency on latestScan
+        setLatestScan((prevLatest) => {
+          const isNewScan = !prevLatest || 
+                           latest.id !== prevLatest.id || 
+                           latest.scanTime !== prevLatest.scanTime
+          
+          if (isNewScan) {
+            console.log('🆕 NEW SCAN DETECTED!')
+            console.log('  Previous scan ID:', prevLatest?.id || 'none')
+            console.log('  New scan ID:', latest.id)
+            console.log('  Previous scan time:', prevLatest?.scanTime || 'none')
+            console.log('  New scan time:', latest.scanTime)
+          } else {
+            console.log('ℹ️ No new scan - same as current')
+          }
+          
+          return latest
+        })
         
-        if (isNewScan) {
-          console.log('🆕 NEW SCAN DETECTED!')
-          console.log('  Previous scan ID:', latestScan?.id || 'none')
-          console.log('  New scan ID:', latest.id)
-          console.log('  Previous scan time:', latestScan?.scanTime || 'none')
-          console.log('  New scan time:', latest.scanTime)
-          
-          // Update latest scan display immediately (no page reload needed)
-          setLatestScan(latest)
-          
-          // Update records list - add new scan to the top
-          setAttendanceRecords((prev) => {
-            // Check if this record already exists
-            const exists = prev.some((p) => p.id === latest.id)
-            if (exists) {
-              // Update existing record
-              return prev.map((p) => p.id === latest.id ? latest : p)
-            } else {
-              // Add new record at the top
-              return [latest, ...prev].slice(0, 50)
-            }
-          })
-          
-          // Update last scan time for polling
-          setLastScanTime(latest.scanTime)
-        } else {
-          console.log('ℹ️ No new scan - same as current')
-          // Still update in case data changed
-          setLatestScan(latest)
-        }
+        // Update records list - add new scan to the top
+        setAttendanceRecords((prev) => {
+          const exists = prev.some((p) => p.id === latest.id)
+          if (exists) {
+            return prev.map((p) => p.id === latest.id ? latest : p)
+          } else {
+            return [latest, ...prev].slice(0, 50)
+          }
+        })
+        
+        // Update last scan time for polling
+        setLastScanTime(latest.scanTime)
       } else {
         console.log('❌ No records in response:', result)
         if (!result.success) {
@@ -120,7 +119,7 @@ export default function RfidDisplayPage() {
     } finally {
       setLoadingAttendance(false)
     }
-  }, [lastScanTime, latestScan])
+  }, [lastScanTime])
 
   // Initial load
   useEffect(() => {
@@ -137,17 +136,60 @@ export default function RfidDisplayPage() {
     }
   }, [latestScan])
 
-  // Auto-refresh: Poll for new records every 2 seconds
-  // If a new scan is detected, the entire page will refresh
+  // Auto-clear display after 10 seconds
   useEffect(() => {
-    console.log('🔄 Starting auto-refresh (every 2 seconds)')
-    console.log('🔄 Page will auto-refresh when new scan is detected')
-    const interval = setInterval(() => {
-      console.log('🔄 Checking for new scans...')
-      fetchLiveAttendance(true)
-    }, 2000) // 2 seconds = 2000ms
+    if (latestScan) {
+      console.log('⏰ Starting 10-second timer to clear display...')
+      const clearTimer = setTimeout(() => {
+        console.log('⏰ 10 seconds elapsed - clearing display')
+        setLatestScan(null)
+      }, 10000) // 10 seconds
+
+      return () => {
+        console.log('⏰ Clearing timer (new scan detected or component unmounting)')
+        clearTimeout(clearTimer)
+      }
+    }
+  }, [latestScan])
+
+  // Supabase Realtime: Listen for new attendance records
+  useEffect(() => {
+    console.log('🔴 Setting up Supabase realtime subscription...')
+    
+    const channel = supabase
+      .channel('attendance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'attendance_records'
+        },
+        (payload) => {
+          console.log('🔴 REALTIME: New attendance record inserted!', payload)
+          // Fetch the latest attendance immediately when new record is detected
+          fetchLiveAttendance(false)
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔴 Realtime subscription status:', status)
+      })
+
     return () => {
-      console.log('🔄 Stopping auto-refresh')
+      console.log('🔴 Cleaning up Supabase realtime subscription')
+      supabase.removeChannel(channel)
+    }
+  }, [fetchLiveAttendance])
+
+  // Auto-refresh: Poll for new records every 10 seconds as fallback
+  useEffect(() => {
+    console.log('🔄 Starting fallback polling (every 10 seconds)')
+    const interval = setInterval(() => {
+      console.log('🔄 Fallback check for new scans...')
+      fetchLiveAttendance(true)
+    }, 10000) // 10 seconds as fallback
+    return () => {
+      console.log('🔄 Stopping fallback polling')
       clearInterval(interval)
     }
   }, [fetchLiveAttendance])
@@ -217,11 +259,11 @@ export default function RfidDisplayPage() {
         }, 1000)
       } else {
         console.error('Failed to enable timeout mode:', result.error)
-        alert('Failed to enable timeout mode. Please try again.')
+        showAlert({ message: 'Failed to enable timeout mode. Please try again.', type: 'error' })
       }
     } catch (error) {
       console.error('Error enabling timeout mode:', error)
-      alert('Error enabling timeout mode. Please try again.')
+      showAlert({ message: 'Error enabling timeout mode. Please try again.', type: 'error' })
     }
   }
 

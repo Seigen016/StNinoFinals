@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabaseClient'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -12,7 +13,53 @@ export async function POST(request: Request) {
       )
     }
 
-    // Dummy grades data for testing
+    // Get student data
+    const { data: student, error: studentError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', studentId || '')
+      .eq('email', email || '')
+      .single()
+
+    if (studentError || !student) {
+      return NextResponse.json(
+        { success: false, error: 'Student not found' },
+        { status: 404 }
+      )
+    }
+
+    // Get attendance records for this student
+    const { data: attendanceRecords, error: attendanceError } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('user_id', student.id)
+
+    // Calculate attendance rate
+    let attendanceRate = null
+    if (attendanceRecords && attendanceRecords.length > 0) {
+      const presentCount = attendanceRecords.filter(
+        (record: any) => record.status === 'present' || record.status === 'Present'
+      ).length
+      attendanceRate = (presentCount / attendanceRecords.length) * 100
+    }
+
+    // Get grades for this student
+    const { data: grades, error: gradesError } = await supabase
+      .from('grades')
+      .select('*')
+      .eq('student_id', student.id)
+
+    // Calculate GPA from grades
+    let gpa = null
+    if (grades && grades.length > 0) {
+      const totalGrade = grades.reduce((sum: number, grade: any) => {
+        const numericGrade = parseFloat(grade.grade)
+        return sum + (isNaN(numericGrade) ? 0 : numericGrade)
+      }, 0)
+      gpa = totalGrade / grades.length
+    }
+
+    // Dummy grades data for testing (fallback if no real data)
     const dummyGrades = [
       {
         id: '1',
@@ -76,12 +123,15 @@ export async function POST(request: Request) {
       },
     ]
 
+    // Count active courses (subjects with grades)
+    const activeCourses = grades?.length || 0
+
     // Dummy dashboard data
     const dashboardData = {
       stats: {
-        gpa: 94.0,
-        attendanceRate: 95.5,
-        activeCourses: 10,
+        gpa: gpa || 94.0,
+        attendanceRate: attendanceRate !== null ? attendanceRate : 95.5,
+        activeCourses: activeCourses || 10,
         pendingTasks: 2,
       },
       assignments: [
@@ -149,7 +199,14 @@ export async function POST(request: Request) {
           },
         ],
       },
-      grades: dummyGrades,
+      grades: grades && grades.length > 0 
+        ? grades.map((g: any) => ({
+            id: g.id,
+            subject: g.subject,
+            grade: g.grade,
+            lastUpdated: g.updated_at || new Date().toISOString(),
+          }))
+        : dummyGrades,
       enrollment: {
         status: 'enrolled',
         academicYear: '2024-2025',

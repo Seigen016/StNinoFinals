@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +17,8 @@ export async function POST(request: Request) {
 
     // Fetch all teachers
     const { data: allTeachers, error: fetchError } = await admin
-      .from('teachers')
+      .from('users')
+      .eq('role', 'teacher')
       .select('*')
       .limit(1000)
 
@@ -66,20 +67,16 @@ export async function POST(request: Request) {
     console.log(`Assigning RFID: ${rfidCard}`)
 
     // Update teacher with RFID card number
-    // Only update rfid_card (primary column) - if it doesn't exist, the error will be clear
     const rfidValue = rfidCard.toUpperCase().trim()
     const updateFields: any = {
-      rfid_card: rfidValue,
+      rfid: rfidValue,
     }
     
-    // Also try rfid_tag if it exists (for compatibility, but don't fail if it doesn't)
-    // We'll try updating both, but only require rfid_card to succeed
-
-    console.log(`Attempting to update teacher ${teacher.id || teacher.teacher_id} with RFID: ${rfidValue}`)
+    console.log(`Attempting to update teacher ${teacher.id} with RFID: ${rfidValue}`)
     console.log(`Update fields:`, updateFields)
 
     const { data: updatedTeacher, error: updateError } = await admin
-      .from('teachers')
+      .from('users')
       .update(updateFields)
       .eq('id', teacher.id)
       .select()

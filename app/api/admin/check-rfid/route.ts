@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import { NextResponse } from 'next/server'
 
 // Enable CORS for ESP32 requests
 export async function OPTIONS(request: Request) {
@@ -44,10 +44,11 @@ export async function GET(request: Request) {
     console.log(`Checking RFID: ${rfidNormalized}`)
     
     // Try to find student by RFID
-    // First, get all students and filter in memory to avoid column errors
+    // First, get all students from users table and filter in memory to avoid column errors
     const { data: allStudents, error: fetchError } = await supabase
-      .from('students')
+      .from('users')
       .select('*')
+      .eq('role', 'student')
       .limit(1000) // Get reasonable number of students
 
     if (fetchError) {
@@ -71,19 +72,12 @@ export async function GET(request: Request) {
       )
     }
 
-    // Filter students in memory by RFID (check all possible column names)
+    // Filter students in memory by RFID (check rfid column)
     const students = (allStudents || []).filter((student: any) => {
-      const rfid1 = (student.rfid_card || '').toString().trim().toUpperCase()
-      const rfid2 = (student.rfidCard || '').toString().trim().toUpperCase()
-      const rfid3 = (student.rfid_tag || '').toString().trim().toUpperCase()
-      const rfid4 = (student.rfidTag || '').toString().trim().toUpperCase()
+      const rfid = (student.rfid || '').toString().trim().toUpperCase()
       
-      return rfid1 === rfidNormalized || rfid1 === rfidNoLeadingZeros ||
-             rfid2 === rfidNormalized || rfid2 === rfidNoLeadingZeros ||
-             rfid3 === rfidNormalized || rfid3 === rfidNoLeadingZeros ||
-             rfid4 === rfidNormalized || rfid4 === rfidNoLeadingZeros ||
-             rfid1.includes(rfidNormalized) || rfid2.includes(rfidNormalized) ||
-             rfid3.includes(rfidNormalized) || rfid4.includes(rfidNormalized)
+      return rfid === rfidNormalized || rfid === rfidNoLeadingZeros ||
+             rfid.includes(rfidNormalized)
     })
 
     const studentError = null // No error since we filtered in memory
@@ -110,12 +104,12 @@ export async function GET(request: Request) {
       success: true,
       assigned: true,
       student: {
-        studentId: student.student_id || student.student_number || student.id || student.studentId || null,
-        name: `${student.first_name || student.firstName || ''} ${student.last_name || student.lastName || ''}`.trim() || student.name || 'Unknown',
+        studentId: student.student_number || student.id || null,
+        name: `${student.first_name || ''} ${student.middle_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
         email: student.email || null,
-        gradeLevel: student.grade_level || student.gradeLevel || null,
+        gradeLevel: student.grade_level || null,
         section: student.section || null,
-        rfidCard: student.rfid_card || student.rfidCard || student.rfid_tag || null,
+        rfidCard: student.rfid || null,
       },
       searchedRfid: rfidNormalized,
       matchType: 'exact'

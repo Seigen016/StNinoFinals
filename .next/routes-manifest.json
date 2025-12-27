@@ -19,7 +19,32 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/api/admin/parents/[id]",
+      "regex": "^/api/admin/parents/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/parents/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/students/[id]",
+      "regex": "^/api/admin/students/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/students/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/teachers/[id]",
+      "regex": "^/api/admin/teachers/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/teachers/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -46,6 +71,12 @@
       "namedRegex": "^/admin(?:/)?$"
     },
     {
+      "page": "/admin/attendance",
+      "regex": "^/admin/attendance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/attendance(?:/)?$"
+    },
+    {
       "page": "/admin/attendance-reports",
       "regex": "^/admin/attendance\\-reports(?:/)?$",
       "routeKeys": {},
@@ -58,16 +89,46 @@
       "namedRegex": "^/admin/live\\-attendance(?:/)?$"
     },
     {
+      "page": "/admin/parents",
+      "regex": "^/admin/parents(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/parents(?:/)?$"
+    },
+    {
+      "page": "/admin/reports",
+      "regex": "^/admin/reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/reports(?:/)?$"
+    },
+    {
       "page": "/admin/rfid-display",
       "regex": "^/admin/rfid\\-display(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/admin/rfid\\-display(?:/)?$"
     },
     {
+      "page": "/admin/settings",
+      "regex": "^/admin/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/settings(?:/)?$"
+    },
+    {
+      "page": "/admin/students",
+      "regex": "^/admin/students(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/students(?:/)?$"
+    },
+    {
       "page": "/admin/teacher-attendance",
       "regex": "^/admin/teacher\\-attendance(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/admin/teacher\\-attendance(?:/)?$"
+    },
+    {
+      "page": "/admin/teachers",
+      "regex": "^/admin/teachers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/teachers(?:/)?$"
     },
     {
       "page": "/api/admin/attendance",
@@ -106,6 +167,18 @@
       "namedRegex": "^/api/admin/login(?:/)?$"
     },
     {
+      "page": "/api/admin/parents",
+      "regex": "^/api/admin/parents(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/parents(?:/)?$"
+    },
+    {
+      "page": "/api/admin/parents/link-student",
+      "regex": "^/api/admin/parents/link\\-student(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/parents/link\\-student(?:/)?$"
+    },
+    {
       "page": "/api/admin/settings",
       "regex": "^/api/admin/settings(?:/)?$",
       "routeKeys": {},
@@ -128,6 +201,12 @@
       "regex": "^/api/admin/teacher\\-attendance(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/admin/teacher\\-attendance(?:/)?$"
+    },
+    {
+      "page": "/api/admin/teachers",
+      "regex": "^/api/admin/teachers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/teachers(?:/)?$"
     },
     {
       "page": "/api/admin/update-teacher-rfid",
@@ -178,10 +257,46 @@
       "namedRegex": "^/api/journal(?:/)?$"
     },
     {
+      "page": "/api/parent/announcements",
+      "regex": "^/api/parent/announcements(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/announcements(?:/)?$"
+    },
+    {
+      "page": "/api/parent/children",
+      "regex": "^/api/parent/children(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/children(?:/)?$"
+    },
+    {
+      "page": "/api/parent/link-student",
+      "regex": "^/api/parent/link\\-student(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/link\\-student(?:/)?$"
+    },
+    {
       "page": "/api/parent/login",
       "regex": "^/api/parent/login(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/parent/login(?:/)?$"
+    },
+    {
+      "page": "/api/parent/student-attendance",
+      "regex": "^/api/parent/student\\-attendance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/student\\-attendance(?:/)?$"
+    },
+    {
+      "page": "/api/parent/student-grades",
+      "regex": "^/api/parent/student\\-grades(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/student\\-grades(?:/)?$"
+    },
+    {
+      "page": "/api/parent/student-stats",
+      "regex": "^/api/parent/student\\-stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/parent/student\\-stats(?:/)?$"
     },
     {
       "page": "/api/student/dashboard",
@@ -214,16 +329,40 @@
       "namedRegex": "^/api/students/update\\-rfid(?:/)?$"
     },
     {
+      "page": "/api/teacher/grades",
+      "regex": "^/api/teacher/grades(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/teacher/grades(?:/)?$"
+    },
+    {
+      "page": "/api/teacher/journal",
+      "regex": "^/api/teacher/journal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/teacher/journal(?:/)?$"
+    },
+    {
       "page": "/api/teacher/login",
       "regex": "^/api/teacher/login(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/teacher/login(?:/)?$"
     },
     {
+      "page": "/api/teacher/schedule",
+      "regex": "^/api/teacher/schedule(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/teacher/schedule(?:/)?$"
+    },
+    {
       "page": "/api/teacher/stats",
       "regex": "^/api/teacher/stats(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/teacher/stats(?:/)?$"
+    },
+    {
+      "page": "/api/teacher/students",
+      "regex": "^/api/teacher/students(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/teacher/students(?:/)?$"
     },
     {
       "page": "/guardian",
@@ -236,6 +375,12 @@
       "regex": "^/parent(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/parent(?:/)?$"
+    },
+    {
+      "page": "/parent-dashboard",
+      "regex": "^/parent\\-dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/parent\\-dashboard(?:/)?$"
     },
     {
       "page": "/student",

@@ -24,7 +24,8 @@ export async function GET(request: Request) {
     
     // Fetch all teachers
     const { data: teachers, error: teachersError } = await admin
-      .from('teachers')
+      .from('users')
+      .eq('role', 'teacher')
       .select('*')
       .limit(1000)
     
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     }
     
     // Fetch attendance records for teachers
-    // Teachers are identified by checking if student_id matches a teacher_id or email
+    // Teachers are identified by checking if user_id matches a teacher's UUID
     const { data: allAttendanceRecords, error: attendanceError } = await admin
       .from('attendance_records')
       .select('*')
@@ -58,13 +59,20 @@ export async function GET(request: Request) {
     const teacherRfidMap: Record<string, any> = {} // Map RFID to teacher
     if (teachers) {
       teachers.forEach((teacher: any) => {
-        const teacherIdStr = (teacher.teacher_id || teacher.id || '').toString().trim()
+        const teacherIdStr = (teacher.employee_number || teacher.id || '').toString().trim()
         const teacherEmail = (teacher.email || '').toString().trim().toLowerCase()
-        const teacherName = `${teacher.first_name || ''} ${teacher.last_name || ''}`.trim() || teacher.name || 'Unknown'
+        const teacherName = `${teacher.first_name || ''} ${teacher.middle_name || ''} ${teacher.last_name || ''}`.trim() || 'Unknown'
         
-        // Map by teacher ID
+        // Map by teacher ID or UUID
+        const teacherUuid = (teacher.id || '').toString().trim()
         if (teacherIdStr) {
           teacherMap[teacherIdStr] = {
+            ...teacher,
+            fullName: teacherName,
+          }
+        }
+        if (teacherUuid) {
+          teacherMap[teacherUuid] = teacherMap[teacherIdStr] || {
             ...teacher,
             fullName: teacherName,
           }
@@ -79,7 +87,7 @@ export async function GET(request: Request) {
         }
         
         // Map by RFID card (normalize: uppercase, remove spaces)
-        const rfidCard = (teacher.rfid_card || teacher.rfidCard || teacher.rfid_tag || teacher.rfidTag || '').toString().trim().toUpperCase().replace(/\s+/g, '')
+        const rfidCard = (teacher.rfid || '').toString().trim().toUpperCase().replace(/\s+/g, '')
         if (rfidCard) {
           teacherRfidMap[rfidCard] = {
             ...teacher,
@@ -98,12 +106,12 @@ export async function GET(request: Request) {
     console.log(`🔑 Teacher RFID map has ${Object.keys(teacherRfidMap).length} entries:`, Object.keys(teacherRfidMap))
     
     // Filter attendance records to only include teachers
-    // Check both student_id match AND RFID card match
+    // Check both user_id match AND RFID card match
     const teacherAttendanceRecords = (allAttendanceRecords || []).filter((record: any) => {
-      const recordId = (record.student_id || '').toString().trim()
+      const recordId = (record.user_id || '').toString().trim()
       const recordRfid = (record.rfid_card || record.rfidCard || record.rfid_tag || record.rfidTag || '').toString().trim().toUpperCase().replace(/\s+/g, '')
       
-      // Check if student_id matches a teacher
+      // Check if user_id matches a teacher
       if (teacherMap[recordId] !== undefined) {
         return true
       }
@@ -132,21 +140,21 @@ export async function GET(request: Request) {
     
     // Process each attendance record
     teacherAttendanceRecords.forEach((record: any) => {
-      const recordId = (record.student_id || '').toString().trim()
+      const recordId = (record.user_id || '').toString().trim()
       const recordRfid = (record.rfid_card || record.rfidCard || record.rfid_tag || record.rfidTag || '').toString().trim().toUpperCase().replace(/\s+/g, '')
       
-      // Try to find teacher by student_id first, then by RFID
+      // Try to find teacher by user_id first, then by RFID
       let teacher = teacherMap[recordId]
       if (!teacher && recordRfid) {
         teacher = teacherRfidMap[recordRfid] || teacherMap[recordRfid]
       }
       
       if (!teacher) {
-        console.log(`⚠️ Could not find teacher for record: student_id=${recordId}, rfid=${recordRfid}`)
+        console.log(`⚠️ Could not find teacher for record: id=${recordId}, rfid=${recordRfid}`)
         return
       }
       
-      const teacherKey = teacher.teacher_id || teacher.id || recordId
+      const teacherKey = teacher.employee_number || teacher.id || recordId
       
       if (!teacherStats[teacherKey]) {
         teacherStats[teacherKey] = {
@@ -194,9 +202,9 @@ export async function GET(request: Request) {
       stats.percentage = Math.round((stats.present / total) * 100)
       
       return {
-        teacherId: stats.teacher.teacher_id || stats.teacher.id,
+        teacherId: stats.teacher.employee_number || stats.teacher.id,
         teacherName: stats.teacher.fullName,
-        subject: stats.teacher.subject || stats.teacher.subjects || stats.teacher.subject_taught || 'N/A',
+        subject: stats.teacher.specialization || stats.teacher.department || 'N/A',
         totalDays: stats.totalDays,
         present: stats.present,
         absent: stats.absent,

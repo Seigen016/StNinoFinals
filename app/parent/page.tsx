@@ -1,15 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { supabase } from "@/lib/supabaseClient"
+import { useAlert } from "@/lib/use-alert"
+import { useConfirm } from "@/lib/use-confirm"
+import { Calendar, Clock, Eye, Home, LayoutDashboard, LogOut, MessageSquare, User, UserPlus } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, GraduationCap, MessageSquare, Calendar, Home, Clock, LogOut, User, Eye } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ParentDashboard } from "./components/ParentDashboard"
 
 interface Child {
   id: string | number
@@ -28,6 +35,19 @@ export default function ParentPortal() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [selectedChild, setSelectedChild] = useState<Child | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAddingChild, setIsAddingChild] = useState(false)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [studentNumber, setStudentNumber] = useState("")
+  const [relationshipType, setRelationshipType] = useState("parent")
+  const [addError, setAddError] = useState("")
+  const { showAlert } = useAlert()
+  const { showConfirm } = useConfirm()
+
+  // Dashboard data states
+  const [childStats, setChildStats] = useState<{ [childId: string]: any }>({})
+  const [childGrades, setChildGrades] = useState<{ [childId: string]: any[] }>({})
+  const [childAttendance, setChildAttendance] = useState<{ [childId: string]: any[] }>({})
+  const [announcements, setAnnouncements] = useState<{ [childId: string]: any[] }>({})
 
   useEffect(() => {
     // Check if parent is logged in
@@ -47,6 +67,78 @@ export default function ParentPortal() {
         if (parsedChildren.length > 0) {
           setSelectedChild(parsedChildren[0])
         }
+        
+        // Initialize mock dashboard data for each child
+        const stats: any = {}
+        const grades: any = {}
+        const attendance: any = {}
+        const announcements_data: any = {}
+        
+        parsedChildren.forEach((child: Child) => {
+          const childId = String(child.id)
+          
+          // Mock stats
+          stats[childId] = {
+            gpa: 93.5 + Math.random() * 3,
+            attendanceRate: 92 + Math.random() * 6,
+            behaviorScore: 85 + Math.random() * 10,
+            pendingTasks: Math.floor(Math.random() * 5),
+          }
+          
+          // Mock grades
+          grades[childId] = [
+            { subject: "Mathematics", grade: "95", lastUpdated: new Date().toISOString() },
+            { subject: "English", grade: "92", lastUpdated: new Date().toISOString() },
+            { subject: "Science", grade: "94", lastUpdated: new Date().toISOString() },
+            { subject: "Filipino", grade: "90", lastUpdated: new Date().toISOString() },
+            { subject: "History", grade: "93", lastUpdated: new Date().toISOString() },
+            { subject: "PE", grade: "96", lastUpdated: new Date().toISOString() },
+          ]
+          
+          // Mock attendance (last 7 days)
+          const attendanceRecords = []
+          for (let i = 6; i >= 0; i--) {
+            const date = new Date()
+            date.setDate(date.getDate() - i)
+            const statuses = ['present', 'present', 'present', 'present', 'late', 'present']
+            attendanceRecords.push({
+              date: date.toISOString(),
+              status: statuses[Math.floor(Math.random() * statuses.length)],
+              time: '7:45 AM',
+            })
+          }
+          attendance[childId] = attendanceRecords
+          
+          // Mock announcements
+          announcements_data[childId] = [
+            {
+              id: '1',
+              title: 'Parent-Teacher Conference Next Week',
+              date: new Date().toISOString(),
+              from: 'Homeroom Teacher',
+              priority: 'high',
+            },
+            {
+              id: '2',
+              title: 'Field Trip Permission Slip Required',
+              date: new Date().toISOString(),
+              from: 'Class Adviser',
+              priority: 'medium',
+            },
+            {
+              id: '3',
+              title: 'Upcoming School Event',
+              date: new Date().toISOString(),
+              from: 'School Admin',
+              priority: 'low',
+            },
+          ]
+        })
+        
+        setChildStats(stats)
+        setChildGrades(grades)
+        setChildAttendance(attendance)
+        setAnnouncements(announcements_data)
       }
     } catch (error) {
       console.error("Error parsing parent data:", error)
@@ -56,11 +148,81 @@ export default function ParentPortal() {
     }
   }, [router])
 
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to log out?")) {
+  const handleLogout = async () => {
+    const confirmed = await showConfirm({
+      message: "Are you sure you want to log out?",
+      confirmText: "Logout",
+      cancelText: "Cancel",
+      variant: "destructive"
+    })
+    
+    if (confirmed) {
+      await supabase.auth.signOut()
       localStorage.removeItem("parent")
       localStorage.removeItem("parentChildren")
       router.push("/")
+    }
+  }
+
+
+  const handleAddChild = async () => {
+    if (!studentNumber.trim()) {
+      setAddError("Please enter a student number")
+      return
+    }
+
+    setIsAddingChild(true)
+    setAddError("")
+
+    try {
+      const response = await fetch("/api/parent/link-student", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          parent_id: parent.id,
+          student_number: studentNumber.trim(),
+          relationship_type: relationshipType,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        setAddError(data.error || "Failed to add student")
+        return
+      }
+
+      // Add the new student to the children list
+      const newChild = {
+        id: data.student.id,
+        name: data.student.name,
+        student_id: data.student.student_number,
+        grade_level: data.student.grade_level,
+        section: data.student.section,
+        email: data.student.email,
+      }
+
+      const updatedChildren = [...children, newChild]
+      setChildren(updatedChildren)
+      localStorage.setItem("parentChildren", JSON.stringify(updatedChildren))
+
+      if (updatedChildren.length === 1) {
+        setSelectedChild(newChild)
+      }
+
+      // Reset form
+      setStudentNumber("")
+      setRelationshipType("parent")
+      setShowAddDialog(false)
+
+      showAlert({ message: "Student added successfully!", type: "success" })
+    } catch (error) {
+      console.error("Error adding student:", error)
+      setAddError("Failed to add student. Please try again.")
+    } finally {
+      setIsAddingChild(false)
     }
   }
 
@@ -122,6 +284,76 @@ export default function ParentPortal() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white bg-transparent"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Child
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Your Child</DialogTitle>
+                    <DialogDescription>
+                      Enter your child's student number to link them to your account.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="studentNumber">Student Number</Label>
+                      <Input
+                        id="studentNumber"
+                        placeholder="e.g., SNPA-2024-001"
+                        value={studentNumber}
+                        onChange={(e) => setStudentNumber(e.target.value)}
+                        disabled={isAddingChild}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="relationship">Relationship</Label>
+                      <Select value={relationshipType} onValueChange={setRelationshipType} disabled={isAddingChild}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="guardian">Guardian</SelectItem>
+                          <SelectItem value="mother">Mother</SelectItem>
+                          <SelectItem value="father">Father</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {addError && (
+                      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+                        {addError}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleAddChild}
+                        disabled={isAddingChild}
+                        className="flex-1 bg-red-800 hover:bg-red-700"
+                      >
+                        {isAddingChild ? "Adding..." : "Add Student"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddDialog(false)
+                          setStudentNumber("")
+                          setAddError("")
+                        }}
+                        disabled={isAddingChild}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Link href="/">
                 <Button
                   variant="outline"
@@ -180,52 +412,17 @@ export default function ParentPortal() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Welcome, {parent.name || parent.email || "Parent/Guardian"}!
               </h2>
-              <p className="text-gray-600">Here's an overview of your children's academic progress.</p>
+              <p className="text-gray-600">Monitor your children's academic progress and school activities.</p>
             </div>
 
-            {/* Children Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {children.map((child) => (
-                <Card key={child.id} className="border-red-200">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {child.photo || child.name?.charAt(0) || "S"}
-                        </div>
-                        <div>
-                          <CardTitle className="text-red-800">{child.name}</CardTitle>
-                          <CardDescription>
-                            {child.grade_level || "N/A"} - {child.section || "N/A"}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handleViewStudentPage(child)}
-                        variant="outline"
-                        size="sm"
-                        className="border-red-800 text-red-800 hover:bg-red-800 hover:text-white"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Student Page
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm text-gray-600">Student ID</p>
-                        <p className="font-medium">{child.student_id || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Email</p>
-                        <p className="font-medium text-sm">{child.email || "N/A"}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {/* Integrated Dashboard Component */}
+            <ParentDashboard
+              children={children}
+              childStats={childStats}
+              childGrades={childGrades}
+              childAttendance={childAttendance}
+              announcements={announcements}
+            />
           </TabsContent>
 
           {/* My Children Tab */}

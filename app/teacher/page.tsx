@@ -2,18 +2,10 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -22,26 +14,40 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
-  LayoutDashboard,
-  GraduationCap,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { supabase } from "@/lib/supabaseClient"
+import { useAlert } from "@/lib/use-alert"
+import { useConfirm } from "@/lib/use-confirm"
+import {
   BookOpen,
-  LogOut,
-  Users,
   Calendar,
-  FileText,
-  Plus,
-  Edit,
-  Save,
-  Download,
-  Bell,
+  ChevronDownIcon,
   Clock,
+  Download,
+  GraduationCap,
   Home,
-  Mail,
-  User,
+  LayoutDashboard,
   Lock,
+  LogOut,
+  Mail,
+  Plus,
+  Save,
   Settings,
+  User
 } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { useEffect, useState } from "react"
 
 
 interface Teacher {
@@ -79,35 +85,9 @@ export default function TeacherPortal() {
   const [selectedQuarter, setSelectedQuarter] = useState("Q1")
   const [gradesData, setGradesData] = useState<any[]>([])
   const [isSavingGrades, setIsSavingGrades] = useState(false)
-
-  // Dummy schedule data - in production, this would come from an API
-  const dummySchedule = [
-    { id: 1, timeStart: "08:00", timeEnd: "09:00", subject: "Mathematics", room: "Room 101", section: "Section A", day: "Monday" },
-    { id: 2, timeStart: "09:00", timeEnd: "10:00", subject: "Mathematics", room: "Room 101", section: "Section B", day: "Monday" },
-    { id: 3, timeStart: "10:30", timeEnd: "11:30", subject: "Science", room: "Room 205", section: "Section A", day: "Monday" },
-    { id: 4, timeStart: "13:00", timeEnd: "14:00", subject: "Mathematics", room: "Room 101", section: "Section C", day: "Monday" },
-    { id: 5, timeStart: "14:00", timeEnd: "15:00", subject: "Science", room: "Room 205", section: "Section B", day: "Monday" },
-    { id: 6, timeStart: "08:00", timeEnd: "09:00", subject: "Mathematics", room: "Room 101", section: "Section A", day: "Tuesday" },
-    { id: 7, timeStart: "09:00", timeEnd: "10:00", subject: "Mathematics", room: "Room 101", section: "Section B", day: "Tuesday" },
-    { id: 8, timeStart: "10:30", timeEnd: "11:30", subject: "Science", room: "Room 205", section: "Section A", day: "Tuesday" },
-    { id: 9, timeStart: "13:00", timeEnd: "14:00", subject: "Mathematics", room: "Room 101", section: "Section C", day: "Tuesday" },
-    { id: 10, timeStart: "14:00", timeEnd: "15:00", subject: "Science", room: "Room 205", section: "Section B", day: "Tuesday" },
-    { id: 11, timeStart: "08:00", timeEnd: "09:00", subject: "Mathematics", room: "Room 101", section: "Section A", day: "Wednesday" },
-    { id: 12, timeStart: "09:00", timeEnd: "10:00", subject: "Mathematics", room: "Room 101", section: "Section B", day: "Wednesday" },
-    { id: 13, timeStart: "10:30", timeEnd: "11:30", subject: "Science", room: "Room 205", section: "Section A", day: "Wednesday" },
-    { id: 14, timeStart: "13:00", timeEnd: "14:00", subject: "Mathematics", room: "Room 101", section: "Section C", day: "Wednesday" },
-    { id: 15, timeStart: "14:00", timeEnd: "15:00", subject: "Science", room: "Room 205", section: "Section B", day: "Wednesday" },
-    { id: 16, timeStart: "08:00", timeEnd: "09:00", subject: "Mathematics", room: "Room 101", section: "Section A", day: "Thursday" },
-    { id: 17, timeStart: "09:00", timeEnd: "10:00", subject: "Mathematics", room: "Room 101", section: "Section B", day: "Thursday" },
-    { id: 18, timeStart: "10:30", timeEnd: "11:30", subject: "Science", room: "Room 205", section: "Section A", day: "Thursday" },
-    { id: 19, timeStart: "13:00", timeEnd: "14:00", subject: "Mathematics", room: "Room 101", section: "Section C", day: "Thursday" },
-    { id: 20, timeStart: "14:00", timeEnd: "15:00", subject: "Science", room: "Room 205", section: "Section B", day: "Thursday" },
-    { id: 21, timeStart: "08:00", timeEnd: "09:00", subject: "Mathematics", room: "Room 101", section: "Section A", day: "Friday" },
-    { id: 22, timeStart: "09:00", timeEnd: "10:00", subject: "Mathematics", room: "Room 101", section: "Section B", day: "Friday" },
-    { id: 23, timeStart: "10:30", timeEnd: "11:30", subject: "Science", room: "Room 205", section: "Section A", day: "Friday" },
-    { id: 24, timeStart: "13:00", timeEnd: "14:00", subject: "Mathematics", room: "Room 101", section: "Section C", day: "Friday" },
-    { id: 25, timeStart: "14:00", timeEnd: "15:00", subject: "Science", room: "Room 205", section: "Section B", day: "Friday" },
-  ]
+  const [teacherStats, setTeacherStats] = useState<any>(null)
+  const [journalEntries, setJournalEntries] = useState<any[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(false)
 
   // Get day name from date
   const getDayName = (dateString: string) => {
@@ -180,33 +160,33 @@ export default function TeacherPortal() {
     }
   }
 
-  // Initialize dummy grades data
+  // Fetch real grades data
   useEffect(() => {
-    if (teacher) {
-      const dummyStudents = [
-        { id: 1, name: "Juan Dela Cruz", studentNumber: "2024-001" },
-        { id: 2, name: "Maria Santos", studentNumber: "2024-002" },
-        { id: 3, name: "Jose Garcia", studentNumber: "2024-003" },
-        { id: 4, name: "Ana Reyes", studentNumber: "2024-004" },
-        { id: 5, name: "Carlos Mendoza", studentNumber: "2024-005" },
-        { id: 6, name: "Liza Torres", studentNumber: "2024-006" },
-        { id: 7, name: "Roberto Cruz", studentNumber: "2024-007" },
-        { id: 8, name: "Patricia Lim", studentNumber: "2024-008" },
-      ]
-
-      const teacherSubject = teacher.subject || teacher.subjects || "Mathematics"
-      const weights = getGradingWeights(teacherSubject)
-
-      const initialGrades = dummyStudents.map((student) => ({
-        ...student,
-        writtenWork: Array(5).fill(""), // 5 written work items
-        performanceTasks: Array(5).fill(""), // 5 performance task items
-        quarterlyAssessment: "",
-      }))
-
-      setGradesData(initialGrades)
+    if (teacher && teacher.id) {
+      fetchGradesData()
     }
-  }, [teacher])
+  }, [teacher, selectedSection, selectedQuarter])
+
+  const fetchGradesData = async () => {
+    if (!teacher || !teacher.id) return
+    
+    setIsLoadingData(true)
+    try {
+      const teacherSubject = teacher.subject || teacher.subjects || teacher.specialization || "General"
+      const response = await fetch(
+        `/api/teacher/grades?teacherId=${teacher.id}&section=${selectedSection}&subject=${encodeURIComponent(teacherSubject)}`
+      )
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setGradesData(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching grades:', error)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
 
   // Calculate final grade for a student
   const calculateFinalGrade = (student: any) => {
@@ -263,20 +243,50 @@ export default function TeacherPortal() {
     )
   }
 
+  const { showAlert } = useAlert()
+  const { showConfirm } = useConfirm()
+
   // Save grades
   const handleSaveGrades = async () => {
+    if (!teacher || !teacher.id) {
+      showAlert({ message: "Teacher information not found", type: "error" })
+      return
+    }
+
     setIsSavingGrades(true)
-    // In production, this would save to the database
-    setTimeout(() => {
+    try {
+      const teacherSubject = teacher.subject || teacher.subjects || teacher.specialization || "General"
+      const response = await fetch('/api/teacher/grades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: teacher.id,
+          subject: teacherSubject,
+          section: selectedSection,
+          quarter: selectedQuarter,
+          grades: gradesData
+        })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        showAlert({ message: "Grades saved successfully!", type: "success" })
+      } else {
+        showAlert({ message: data.error || "Failed to save grades", type: "error" })
+      }
+    } catch (error) {
+      console.error('Error saving grades:', error)
+      showAlert({ message: "Error saving grades. Please try again.", type: "error" })
+    } finally {
       setIsSavingGrades(false)
-      alert("Grades saved successfully!")
-    }, 1000)
+    }
   }
 
   // Export grades to CSV
   const handleExportToCSV = () => {
     if (!teacher || gradesData.length === 0) {
-      alert("No grades data to export.")
+      showAlert({ message: "No grades data to export.", type: "warning" })
       return
     }
 
@@ -337,14 +347,67 @@ export default function TeacherPortal() {
     document.body.removeChild(link)
   }
 
-  // Filter schedule for selected date
+  // Fetch schedule for selected date
   useEffect(() => {
-    const dayName = getDayName(selectedDate)
-    const daySchedule = dummySchedule.filter(item => item.day === dayName)
-    // Sort by time
-    daySchedule.sort((a, b) => a.timeStart.localeCompare(b.timeStart))
-    setSchedule(daySchedule)
-  }, [selectedDate])
+    if (teacher && teacher.id) {
+      fetchSchedule()
+    }
+  }, [selectedDate, teacher])
+
+  const fetchSchedule = async () => {
+    if (!teacher || !teacher.id) return
+    
+    try {
+      const response = await fetch(
+        `/api/teacher/schedule?teacherId=${teacher.id}&date=${selectedDate}`
+      )
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setSchedule(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching schedule:', error)
+    }
+  }
+
+  // Fetch teacher stats and journal entries
+  useEffect(() => {
+    if (teacher && teacher.id) {
+      fetchTeacherStats()
+      fetchJournalEntries()
+    }
+  }, [teacher])
+
+  const fetchTeacherStats = async () => {
+    if (!teacher || !teacher.id) return
+    
+    try {
+      const response = await fetch(`/api/teacher/stats?teacherId=${teacher.id}`)
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setTeacherStats(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching teacher stats:', error)
+    }
+  }
+
+  const fetchJournalEntries = async () => {
+    if (!teacher || !teacher.id) return
+    
+    try {
+      const response = await fetch(`/api/teacher/journal?teacherId=${teacher.id}`)
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setJournalEntries(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching journal entries:', error)
+    }
+  }
 
   // Check if teacher is logged in on component mount
   useEffect(() => {
@@ -408,8 +471,16 @@ export default function TeacherPortal() {
     }
   }
 
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to log out?")) {
+  const handleLogout = async () => {
+    const confirmed = await showConfirm({
+      message: "Are you sure you want to log out?",
+      confirmText: "Logout",
+      cancelText: "Cancel",
+      variant: "destructive"
+    })
+    
+    if (confirmed) {
+      await supabase.auth.signOut()
       localStorage.removeItem("teacher")
       setTeacher(null)
       window.location.href = "/"
@@ -515,46 +586,50 @@ export default function TeacherPortal() {
       const data = await response.json()
 
       if (data.success) {
-        alert(`Grade updated successfully!`)
+        showAlert({ message: "Grade updated successfully!", type: "success" })
         // Reload the page to show updated grades
         window.location.reload()
       } else {
-        alert(data.error || "Failed to update grade. Please try again.")
+        showAlert({ message: data.error || "Failed to update grade. Please try again.", type: "error" })
       }
     } catch (error) {
       console.error("Grade update error:", error)
-      alert("Error updating grade. Please try again.")
+      showAlert({ message: "Error updating grade. Please try again.", type: "error" })
     }
   }
 
   const handleJournalSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    if (!teacher || !teacher.id) {
+      showAlert({ message: "Teacher information not found", type: "error" })
+      return
+    }
+
     try {
-      const response = await fetch("/api/journal", {
+      const response = await fetch("/api/teacher/journal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(journalEntry),
+        body: JSON.stringify({
+          ...journalEntry,
+          teacherId: teacher.id
+        }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        alert("Journal entry saved successfully!")
+        showAlert({ message: "Journal entry saved successfully!", type: "success" })
         setShowAddJournal(false)
         setJournalEntry({ date: "", subject: "", topic: "", activities: "", notes: "" })
-        // Reload to show new entry
-        window.location.reload()
+        // Refresh journal entries
+        fetchJournalEntries()
       } else {
-        alert(data.error || "Failed to save journal entry. Please try again.")
+        showAlert({ message: data.error || "Failed to save journal entry. Please try again.", type: "error" })
       }
     } catch (error) {
       console.error("Journal submission error:", error)
-      // Fallback for development
-      console.log("Journal entry submitted:", journalEntry)
-      alert("Journal entry saved (dev mode)")
-      setShowAddJournal(false)
-      setJournalEntry({ date: "", subject: "", topic: "", activities: "", notes: "" })
+      showAlert({ message: "Error saving journal entry. Please try again.", type: "error" })
     }
   }
 
@@ -644,13 +719,147 @@ export default function TeacherPortal() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="border-l-4 border-l-red-800">
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Students</CardDescription>
+                  <CardTitle className="text-3xl text-red-800">
+                    {teacherStats?.totalStudents || 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600">Across all your classes</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-blue-600">
+                <CardHeader className="pb-2">
+                  <CardDescription>Classes Today</CardDescription>
+                  <CardTitle className="text-3xl text-blue-600">
+                    {teacherStats?.classesToday || 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600">Scheduled for today</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-green-600">
+                <CardHeader className="pb-2">
+                  <CardDescription>Journal Entries</CardDescription>
+                  <CardTitle className="text-3xl text-green-600">
+                    {teacherStats?.journalEntries || 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600">Total entries recorded</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-orange-600">
+                <CardHeader className="pb-2">
+                  <CardDescription>Pending Grades</CardDescription>
+                  <CardTitle className="text-3xl text-orange-600">
+                    {teacherStats?.pendingGrades || 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600">Awaiting submission</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Today's Schedule */}
+            {teacherStats?.todaySchedule && teacherStats.todaySchedule.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-red-800 flex items-center">
+                    <Clock className="w-5 h-5 mr-2" />
+                    Today's Schedule
+                  </CardTitle>
+                  <CardDescription>Your classes scheduled for today</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {teacherStats.todaySchedule.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="text-center">
+                            <div className="text-sm font-semibold text-red-800">{item.timeStart}</div>
+                            <div className="text-xs text-gray-500">{item.timeEnd}</div>
+                          </div>
+                          <div>
+                            <div className="font-medium">{item.subject}</div>
+                            <div className="text-sm text-gray-600">{item.section} • {item.room}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Announcements */}
+            {teacherStats?.announcements && teacherStats.announcements.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-red-800">Recent Announcements</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {teacherStats.announcements.map((announcement: any) => (
+                      <div key={announcement.id} className="p-3 border rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-red-800">{announcement.title}</h3>
+                            <p className="text-sm text-gray-600 mt-1">{announcement.content}</p>
+                          </div>
+                          {announcement.priority && (
+                            <Badge variant={announcement.priority === 'high' ? 'destructive' : 'default'}>
+                              {announcement.priority}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-800">Welcome to Teacher Portal</CardTitle>
-                <CardDescription>Use the tabs above to manage your classes, grades, and teaching journal</CardDescription>
+                <CardTitle className="text-red-800">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Dashboard data will be loaded from the database.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button 
+                    onClick={() => setActiveTab('grades')}
+                    className="bg-red-800 hover:bg-red-700 h-auto py-4"
+                  >
+                    <GraduationCap className="w-5 h-5 mr-2" />
+                    Manage Grades
+                  </Button>
+                  <Button 
+                    onClick={() => setActiveTab('journal')}
+                    variant="outline"
+                    className="border-red-800 text-red-800 hover:bg-red-50 h-auto py-4"
+                  >
+                    <BookOpen className="w-5 h-5 mr-2" />
+                    Add Journal Entry
+                  </Button>
+                  <Button 
+                    onClick={() => setActiveTab('calendar')}
+                    variant="outline"
+                    className="border-red-800 text-red-800 hover:bg-red-50 h-auto py-4"
+                  >
+                    <Calendar className="w-5 h-5 mr-2" />
+                    View Schedule
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -803,18 +1012,48 @@ export default function TeacherPortal() {
               <CardContent>
                 <div className="space-y-6">
                   {/* Date Selector */}
-                  <div className="flex items-center gap-4 mb-6">
-                    <Label htmlFor="schedule-date" className="text-sm font-medium">Select Date:</Label>
-                    <Input
-                      id="schedule-date"
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="w-48"
-                    />
-                    <Badge variant="outline" className="ml-auto">
-                      {getDayName(selectedDate)}
-                    </Badge>
+                  <div className="flex flex-col gap-3 mb-6">
+                    <Label htmlFor="schedule-date" className="text-sm font-medium">
+                      Select Date
+                    </Label>
+                    <div className="flex items-center gap-4">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            id="schedule-date"
+                            className="w-64 justify-between font-normal border-red-200 hover:bg-red-50"
+                          >
+                            {new Date(selectedDate).toLocaleDateString('en-US', { 
+                              weekday: 'short',
+                              month: 'long', 
+                              day: 'numeric', 
+                              year: 'numeric' 
+                            })}
+                            <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={selectedDate ? new Date(selectedDate) : new Date()}
+                            captionLayout="dropdown"
+                            onSelect={(date) => {
+                              if (date) {
+                                // Format date in local timezone to avoid off-by-one errors
+                                const year = date.getFullYear()
+                                const month = String(date.getMonth() + 1).padStart(2, '0')
+                                const day = String(date.getDate()).padStart(2, '0')
+                                setSelectedDate(`${year}-${month}-${day}`)
+                              }
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Badge variant="outline" className="text-sm px-3 py-1">
+                        {getDayName(selectedDate)}
+                      </Badge>
+                    </div>
                   </div>
 
                   {/* Timeline */}
@@ -918,14 +1157,26 @@ export default function TeacherPortal() {
                       </div>
                       <div className="ml-auto">
                         <Badge variant="outline" className="text-sm">
-                          Subject: {teacher.subject || teacher.subjects || "N/A"}
+                          Subject: {teacher.subject || teacher.subjects || teacher.specialization || "N/A"}
                         </Badge>
                       </div>
                     </div>
 
-                    {/* Grading System Info */}
-                    {(() => {
-                      const teacherSubject = teacher.subject || teacher.subjects || "Mathematics"
+                    {isLoadingData ? (
+                      <div className="text-center py-12">
+                        <div className="text-xl font-bold text-red-800">Loading grades data...</div>
+                      </div>
+                    ) : gradesData.length === 0 ? (
+                      <div className="text-center py-12">
+                        <GraduationCap className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600 mb-2">No students found for {selectedSection}</p>
+                        <p className="text-sm text-gray-500">Select a different section or make sure students are enrolled in your classes.</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Grading System Info */}
+                        {(() => {
+                          const teacherSubject = teacher.subject || teacher.subjects || teacher.specialization || "Mathematics"
                       const weights = getGradingWeights(teacherSubject)
                       return (
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -1094,6 +1345,8 @@ export default function TeacherPortal() {
                         )}
                       </Button>
                     </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -1127,15 +1380,42 @@ export default function TeacherPortal() {
                     </DialogHeader>
                     <form onSubmit={handleJournalSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="date">Date</Label>
-                          <Input
-                            id="date"
-                            type="date"
-                            value={journalEntry.date}
-                            onChange={(e) => setJournalEntry({ ...journalEntry, date: e.target.value })}
-                            required
-                          />
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="journal-date">Date</Label>
+                          <Popover modal={true}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                id="journal-date"
+                                className="justify-between font-normal"
+                                type="button"
+                              >
+                                {journalEntry.date 
+                                  ? new Date(journalEntry.date).toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric', 
+                                      year: 'numeric' 
+                                    })
+                                  : "Select date"}
+                                <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto overflow-hidden p-0 z-[9999]" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={journalEntry.date ? new Date(journalEntry.date) : undefined}
+                                captionLayout="dropdown"
+                                onSelect={(date) => {
+                                  if (date) {
+                                    const year = date.getFullYear()
+                                    const month = String(date.getMonth() + 1).padStart(2, '0')
+                                    const day = String(date.getDate()).padStart(2, '0')
+                                    setJournalEntry({ ...journalEntry, date: `${year}-${month}-${day}` })
+                                  }
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div>
                           <Label htmlFor="subject">Subject</Label>
@@ -1192,11 +1472,46 @@ export default function TeacherPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="text-center py-12">
-                    <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-4">No journal entries yet.</p>
-                    <p className="text-sm text-gray-500">Click "Add Entry" to create your first journal entry.</p>
-                  </div>
+                  {journalEntries.length > 0 ? (
+                    <div className="space-y-4">
+                      {journalEntries.map((entry: any) => (
+                        <Card key={entry.id} className="border-l-4 border-l-red-800">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg text-red-800">{entry.topic}</CardTitle>
+                                <CardDescription>
+                                  {entry.subject} • {new Date(entry.date).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}
+                                </CardDescription>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <Label className="text-sm font-semibold text-gray-700">Activities Conducted:</Label>
+                              <p className="text-sm text-gray-600 mt-1">{entry.activities}</p>
+                            </div>
+                            {entry.notes && (
+                              <div>
+                                <Label className="text-sm font-semibold text-gray-700">Notes & Observations:</Label>
+                                <p className="text-sm text-gray-600 mt-1">{entry.notes}</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-4">No journal entries yet.</p>
+                      <p className="text-sm text-gray-500">Click "Add Entry" to create your first journal entry.</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

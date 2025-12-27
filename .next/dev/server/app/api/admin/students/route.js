@@ -1,11 +1,12 @@
 var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/admin/students/route.js")
 R.c("server/chunks/bdf11_@supabase_node-fetch_lib_index_c5d13751.js")
 R.c("server/chunks/65d48_next_3fc2875d._.js")
+R.c("server/chunks/8d680_nodemailer_af973019._.js")
 R.c("server/chunks/bcdff_tr46_f2ec906a._.js")
 R.c("server/chunks/27085_@supabase_storage-js_dist_module_ad207baa._.js")
 R.c("server/chunks/5ca30_@supabase_auth-js_dist_module_d7e27bad._.js")
 R.c("server/chunks/node_modules__pnpm_26c2adad._.js")
-R.c("server/chunks/[root-of-the-server]__7f738690._.js")
+R.c("server/chunks/[root-of-the-server]__dcd418f7._.js")
 R.c("server/chunks/_next-internal_server_app_api_admin_students_route_actions_98cc7dc3.js")
 R.m("[project]/node_modules/.pnpm/next@16.0.8_react-dom@19.2.1_react@19.2.1__react@19.2.1/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/app/api/admin/students/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)")
 module.exports=R.m("[project]/node_modules/.pnpm/next@16.0.8_react-dom@19.2.1_react@19.2.1__react@19.2.1/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/app/api/admin/students/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports
