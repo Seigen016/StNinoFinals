@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
 } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TabsContent } from "@/components/ui/tabs"
@@ -170,18 +170,20 @@ export function StudentManagementTab({ students, loadingStudents, onStudentAdded
                   <form onSubmit={handleAddStudent} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="firstName">First Name *</Label>
+                        <Label htmlFor="firstName" required>First Name</Label>
                         <Input
                           id="firstName"
                           value={newStudent.first_name}
+                          placeholder="Enter first name"
                           onChange={(e) => setNewStudent({ ...newStudent, first_name: e.target.value })}
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="lastName">Last Name *</Label>
+                        <Label htmlFor="lastName" required>Last Name</Label>
                         <Input
                           id="lastName"
+                          placeholder="Enter last name"
                           value={newStudent.last_name}
                           onChange={(e) => setNewStudent({ ...newStudent, last_name: e.target.value })}
                           required
@@ -192,12 +194,13 @@ export function StudentManagementTab({ students, loadingStudents, onStudentAdded
                       <Label htmlFor="middleName">Middle Name</Label>
                       <Input
                         id="middleName"
+                        placeholder="Enter middle name"
                         value={newStudent.middle_name}
                         onChange={(e) => setNewStudent({ ...newStudent, middle_name: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="gradeLevel">Grade Level *</Label>
+                      <Label htmlFor="gradeLevel" required>Grade Level</Label>
                       <Select value={newStudent.grade_level} onValueChange={(value) => setNewStudent({ ...newStudent, grade_level: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select grade level" />
@@ -210,10 +213,11 @@ export function StudentManagementTab({ students, loadingStudents, onStudentAdded
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="section">Section *</Label>
+                      <Label htmlFor="section" required>Section</Label>
                       <Input
                         id="section"
                         value={newStudent.section}
+                        placeholder="Enter section"
                         onChange={(e) => setNewStudent({ ...newStudent, section: e.target.value })}
                         required
                       />
@@ -224,17 +228,27 @@ export function StudentManagementTab({ students, loadingStudents, onStudentAdded
                         id="email"
                         type="email"
                         value={newStudent.email}
+                        placeholder="Enter email"
                         onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={newStudent.phone_number}
-                        onChange={(e) => setNewStudent({ ...newStudent, phone_number: e.target.value })}
-                      />
+                      <div className="flex">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm text-muted-foreground select-none">+63</span>
+                        <Input
+                          id="phone"
+                          className="rounded-l-none"
+                          value={newStudent.phone_number.replace(/^\+63/, '').replace(/^0/, '')}
+                          placeholder="9XXXXXXXXX"
+                          inputMode="numeric"
+                          maxLength={10}
+                          onChange={(e) => {
+                            const d = e.target.value.replace(/\D/g, '');
+                            setNewStudent({ ...newStudent, phone_number: d ? `+63${d}` : '' });
+                          }}
+                        />
+                      </div>
                     </div>
                     <div className="flex justify-end space-x-2">
                       {studentFormError && (

@@ -2,14 +2,13 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Calendar, CheckCircle, Clock, FileText, TrendingUp, Users } from "lucide-react"
+import { Calendar, CheckCircle, Clock, FileText, TrendingUp, Users } from "lucide-react"
 
 interface TeacherDashboardProps {
   stats: {
     totalStudents: number
     classesToday: number
     pendingGrades: number
-    journalEntries: number
   }
   todaySchedule: Array<{
     id: string
@@ -94,18 +93,6 @@ export function TeacherDashboard({ stats, todaySchedule, recentActivity }: Teach
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="pb-3">
-            <CardDescription>Journal Entries</CardDescription>
-            <CardTitle className="text-3xl">{stats.journalEntries}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <BookOpen className="mr-1 h-4 w-4" />
-              This month
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -169,15 +156,13 @@ export function TeacherDashboard({ stats, todaySchedule, recentActivity }: Teach
                   <div key={activity.id} className="flex items-start gap-3 border-b pb-3 last:border-0">
                     <div className={`mt-1 rounded-full p-1.5 ${
                       activity.type === 'grade' ? 'bg-green-100' :
-                      activity.type === 'journal' ? 'bg-blue-100' :
                       activity.type === 'attendance' ? 'bg-purple-100' :
                       'bg-gray-100'
                     }`}>
                       {activity.type === 'grade' && <CheckCircle className="h-4 w-4 text-green-600" />}
-                      {activity.type === 'journal' && <FileText className="h-4 w-4 text-blue-600" />}
                       {activity.type === 'attendance' && <Users className="h-4 w-4 text-purple-600" />}
-                      {!['grade', 'journal', 'attendance'].includes(activity.type) && (
-                        <BookOpen className="h-4 w-4 text-gray-600" />
+                      {!['grade', 'attendance'].includes(activity.type) && (
+                        <FileText className="h-4 w-4 text-gray-600" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -202,10 +187,6 @@ export function TeacherDashboard({ stats, todaySchedule, recentActivity }: Teach
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <button className="p-4 bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200 rounded-lg hover:border-blue-400 hover:shadow-md transition-all">
-              <FileText className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-              <p className="text-sm font-medium">Teaching Journal</p>
-            </button>
             <button className="p-4 bg-gradient-to-br from-green-50 to-white border-2 border-green-200 rounded-lg hover:border-green-400 hover:shadow-md transition-all">
               <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
               <p className="text-sm font-medium">Manage Grades</p>
@@ -219,7 +200,7 @@ export function TeacherDashboard({ stats, todaySchedule, recentActivity }: Teach
               <p className="text-sm font-medium">Monitor Attendance</p>
             </button>
             <button className="p-4 bg-gradient-to-br from-indigo-50 to-white border-2 border-indigo-200 rounded-lg hover:border-indigo-400 hover:shadow-md transition-all">
-              <BookOpen className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
+              <CheckCircle className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
               <p className="text-sm font-medium">Check Grades</p>
             </button>
           </div>

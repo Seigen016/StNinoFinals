@@ -2,18 +2,20 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ExportDropdown } from "@/components/ui/export-dropdown"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  ArrowLeft,
-  Download,
-  RefreshCcw
-} from "lucide-react"
-import Link from "next/link"
+import { cn } from "@/lib/utils"
+import { endOfWeek, format, startOfWeek, subWeeks } from "date-fns"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+import { CalendarIcon, RefreshCcw } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { DateRange } from "react-day-picker"
 
 interface Teacher {
   teacherId: string
@@ -49,24 +51,23 @@ export default function TeacherAttendancePage() {
   const [data, setData] = useState<TeacherAttendanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("")
-  const [startDate, setStartDate] = useState<string>("")
-  const [endDate, setEndDate] = useState<string>("")
-  
-  // Calculate default start date (30 days ago)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined)
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+
   useEffect(() => {
     const end = new Date()
     const start = new Date()
     start.setDate(start.getDate() - 30)
-    setStartDate(start.toISOString().split('T')[0])
-    setEndDate(end.toISOString().split('T')[0])
+    setDateRange({ from: start, to: end })
   }, [])
 
   const fetchData = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (startDate) params.append('startDate', startDate)
-      if (endDate) params.append('endDate', endDate)
+      if (dateRange?.from) params.append('startDate', format(dateRange.from, 'yyyy-MM-dd'))
+      if (dateRange?.to) params.append('endDate', format(dateRange.to, 'yyyy-MM-dd'))
       if (selectedTeacherId) params.append('teacherId', selectedTeacherId)
       
       const response = await fetch(`/api/admin/teacher-attendance?${params.toString()}`)
@@ -87,10 +88,8 @@ export default function TeacherAttendancePage() {
   }
 
   useEffect(() => {
-    if (startDate && endDate) {
-      fetchData()
-    }
-  }, [startDate, endDate, selectedTeacherId])
+    if (dateRange?.from && dateRange?.to) fetchData()
+  }, [dateRange, selectedTeacherId])
 
   const selectedTeacher = useMemo(() => {
     if (!data || !selectedTeacherId) return null
@@ -98,16 +97,14 @@ export default function TeacherAttendancePage() {
   }, [data, selectedTeacherId])
 
   // Generate date range for table
-  const dateRange = useMemo(() => {
+  const dateColumns = useMemo(() => {
     if (!data) return []
     const dates: string[] = []
     const start = new Date(data.dateRange.start)
     const end = new Date(data.dateRange.end)
-    
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d).toISOString().split('T')[0])
     }
-    
     return dates
   }, [data])
 
@@ -154,54 +151,76 @@ export default function TeacherAttendancePage() {
     return codes[code] || code
   }
 
-  const exportToCSV = () => {
-    if (!data || !data.teachers.length) return
-
-    // Generate date range for CSV
+  const getDates = (): string[] => {
     const dates: string[] = []
-    if (data.dateRange.start && data.dateRange.end) {
+    if (data?.dateRange.start && data.dateRange.end) {
       const start = new Date(data.dateRange.start)
       const end = new Date(data.dateRange.end)
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         dates.push(new Date(d).toISOString().split('T')[0])
       }
     }
+    return dates
+  }
 
-    // Create CSV header
-    const headers = ['#', 'Name', 'Subject', 'Total Days', 'Present', 'Absent', 'Late', '%', ...dates.map(d => formatDate(d))]
-    const rows = [headers]
-
-    // Add teacher data
-    data.teachers.forEach((teacher, index) => {
-      const row = [
-        (index + 1).toString(),
+  const exportToExcel = async () => {
+    if (!data || !data.teachers.length) return
+    const { downloadExcel } = await import('@/lib/export-excel')
+    const dates = getDates()
+    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+    const startStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''
+    const endStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
+    await downloadExcel(`teacher-attendance-${startStr}-to-${endStr}`, {
+      title: [
+        'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
+        'TEACHER ATTENDANCE REPORT',
+        `Period: ${startStr} to ${endStr}`,
+        `Generated: ${generated}`,
+      ],
+      columns: ['#', 'Name', 'Subject', 'Total Days', 'Present', 'Absent', 'Late', '%', ...dates.map(d => formatDate(d))],
+      colWidths: [6, 30, 22, 14, 12, 12, 10, 10, ...dates.map(() => 12)],
+      rows: data.teachers.map((teacher, i) => [
+        i + 1,
         teacher.teacherName,
         teacher.subject || 'N/A',
-        teacher.totalDays.toString(),
-        teacher.present.toString(),
-        teacher.absent.toString(),
-        teacher.late.toString(),
+        teacher.totalDays,
+        teacher.present,
+        teacher.absent,
+        teacher.late,
         `${teacher.percentage}%`,
-        ...dates.map(date => teacher.dailyAttendance[date] || '-')
-      ]
-      rows.push(row)
+        ...dates.map(d => teacher.dailyAttendance[d] || '-'),
+      ]),
+      headerColor: 'red',
+    })
+  }
+
+  const exportToPDF = () => {
+    if (!data || !data.teachers.length) return
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold')
+    doc.text('STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.', 148.5, 14, { align: 'center' })
+    doc.setFontSize(11)
+    doc.text('TEACHER ATTENDANCE REPORT', 148.5, 21, { align: 'center' })
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+    const startStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''
+    const endStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
+    doc.text(`Period: ${startStr} to ${endStr}`, 148.5, 27, { align: 'center' })
+    doc.text(`Generated: ${generated}`, 148.5, 32, { align: 'center' })
+
+    autoTable(doc, {
+      startY: 38,
+      head: [['#', 'Teacher Name', 'Subject', 'Total Days', 'Present', 'Absent', 'Late', '%']],
+      body: data.teachers.map((t, i) => [i + 1, t.teacherName, t.subject || 'N/A', t.totalDays, t.present, t.absent, t.late, `${t.percentage}%`]),
+      theme: 'grid',
+      headStyles: { fillColor: [153, 27, 27], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' }, 7: { halign: 'center' } },
+      margin: { left: 15, right: 15 },
     })
 
-    // Convert to CSV string
-    const csvContent = rows.map(row => 
-      row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',')
-    ).join('\n')
-
-    // Download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `teacher-attendance-report-${startDate}-to-${endDate}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    doc.save(`teacher-attendance-${startStr}-to-${endStr}.pdf`)
   }
 
   if (loading) {
@@ -220,49 +239,62 @@ export default function TeacherAttendancePage() {
       {/* Header */}
       <header className="bg-white shadow-md border-b-4 border-red-800">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/admin">
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-red-800">Teacher Attendance Analytics</h1>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
+            <div className="flex flex-col md:flex-row items-center md:space-x-4 space-y-2 md:space-y-0 w-full md:w-auto">
+              
+              <div className="flex-1">
+                <h1 className="text-xl md:text-2xl font-bold text-red-800">Teacher Attendance Analytics</h1>
                 <p className="text-sm text-gray-600">Track and analyze teacher attendance records</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4 flex-wrap">
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="startDate" className="text-sm">Start Date:</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="endDate" className="text-sm">End Date:</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-40"
-                />
-              </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Quick chips */}
+              {[
+                { label: 'This Week', fn: () => setDateRange({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: endOfWeek(new Date(), { weekStartsOn: 1 }) }) },
+                { label: 'Last Week', fn: () => { const lw = subWeeks(new Date(), 1); setDateRange({ from: startOfWeek(lw, { weekStartsOn: 1 }), to: endOfWeek(lw, { weekStartsOn: 1 }) }); } },
+                { label: 'Last 30 Days', fn: () => { const e = new Date(); const s = new Date(); s.setDate(s.getDate() - 30); setDateRange({ from: s, to: e }); } },
+              ].map(({ label, fn }) => (
+                <button key={label} onClick={fn}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:border-red-700 hover:text-red-700 hover:bg-red-50 active:scale-95 transition-[color,background-color,border-color,transform] duration-150 ease-out"
+                >
+                  {label}
+                </button>
+              ))}
+
+              {/* Date range picker */}
+              <Popover open={isDatePickerOpen} onOpenChange={(open) => { setIsDatePickerOpen(open); if (open) setTempDateRange(dateRange); }} modal={true}>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-lg active:scale-95 transition-[color,background-color,border-color,transform] duration-150 ease-out',
+                    dateRange?.from ? 'text-gray-700 bg-white border-gray-300 hover:border-red-700' : 'text-gray-400 bg-gray-50 border-gray-200'
+                  )}>
+                    <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                    {dateRange?.from
+                      ? dateRange.to
+                        ? `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`
+                        : format(dateRange.from, 'MMM d, yyyy')
+                      : 'Select date range'}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar mode="range" defaultMonth={tempDateRange?.from || dateRange?.from} selected={tempDateRange} onSelect={setTempDateRange} numberOfMonths={2} />
+                  <div className="p-3 border-t flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { setTempDateRange(dateRange); setIsDatePickerOpen(false); }}>Cancel</Button>
+                    <Button size="sm" className="flex-1 text-xs bg-red-800 hover:bg-red-900"
+                      onClick={() => { if (tempDateRange?.from && tempDateRange?.to) { setDateRange(tempDateRange); setIsDatePickerOpen(false); } }}
+                      disabled={!tempDateRange?.from || !tempDateRange?.to}
+                    >Apply</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <Button onClick={fetchData} variant="outline" size="sm">
                 <RefreshCcw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
               {data && data.teachers.length > 0 && (
-                <Button onClick={exportToCSV} variant="outline" size="sm" className="bg-green-50 hover:bg-green-100">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </Button>
+                <ExportDropdown onPDF={exportToPDF} onExcel={exportToExcel} size="sm" />
               )}
             </div>
           </div>
@@ -448,7 +480,7 @@ export default function TeacherAttendancePage() {
                               : teacher.percentage >= 70
                               ? 'bg-yellow-500'
                               : 'bg-red-500'
-                          } transition-all duration-500`}
+                          } transition-[width] duration-500 ease-out`}
                           style={{ width: `${teacher.percentage}%` }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -481,7 +513,7 @@ export default function TeacherAttendancePage() {
                         <TableHead className="text-center">Total Days</TableHead>
                         <TableHead className="text-center">Present</TableHead>
                         <TableHead className="text-center">%</TableHead>
-                        {dateRange.map((date) => (
+                        {dateColumns.map((date) => (
                           <TableHead key={date} className="text-center min-w-[80px]">
                             {formatDate(date)}
                           </TableHead>
@@ -508,7 +540,7 @@ export default function TeacherAttendancePage() {
                               {teacher.percentage}%
                             </Badge>
                           </TableCell>
-                          {dateRange.map((date) => {
+                          {dateColumns.map((date) => {
                             const code = teacher.dailyAttendance[date] || '-'
                             return (
                               <TableCell key={date} className="text-center">

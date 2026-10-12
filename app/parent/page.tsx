@@ -1,197 +1,229 @@
-"use client"
+'use client';
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { supabase } from "@/lib/supabaseClient"
-import { useAlert } from "@/lib/use-alert"
-import { useConfirm } from "@/lib/use-confirm"
-import { Calendar, Clock, Eye, Home, LayoutDashboard, LogOut, MessageSquare, User, UserPlus } from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { ParentDashboard } from "./components/ParentDashboard"
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/lib/supabaseClient';
+import { useAlert } from '@/lib/use-alert';
+import { useConfirm } from '@/lib/use-confirm';
+import {
+  Calendar,
+  Clock,
+  Eye,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  User,
+  UserPlus,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ParentDashboard } from './components/ParentDashboard';
 
 interface Child {
-  id: string | number
-  name: string
-  student_id?: string
-  grade_level?: string
-  section?: string
-  email?: string
-  photo?: string
+  id: string | number;
+  name: string;
+  student_id?: string;
+  grade_level?: string;
+  section?: string;
+  email?: string;
+  photo?: string;
 }
 
 export default function ParentPortal() {
-  const router = useRouter()
-  const [parent, setParent] = useState<any>(null)
-  const [children, setChildren] = useState<Child[]>([])
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const [selectedChild, setSelectedChild] = useState<Child | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isAddingChild, setIsAddingChild] = useState(false)
-  const [showAddDialog, setShowAddDialog] = useState(false)
-  const [studentNumber, setStudentNumber] = useState("")
-  const [relationshipType, setRelationshipType] = useState("parent")
-  const [addError, setAddError] = useState("")
-  const { showAlert } = useAlert()
-  const { showConfirm } = useConfirm()
+  const router = useRouter();
+  const [parent, setParent] = useState<any>(null);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAddingChild, setIsAddingChild] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [studentNumber, setStudentNumber] = useState('');
+  const [relationshipType, setRelationshipType] = useState('parent');
+  const [addError, setAddError] = useState('');
+  const { showAlert } = useAlert();
+  const { showConfirm } = useConfirm();
 
   // Dashboard data states
-  const [childStats, setChildStats] = useState<{ [childId: string]: any }>({})
-  const [childGrades, setChildGrades] = useState<{ [childId: string]: any[] }>({})
-  const [childAttendance, setChildAttendance] = useState<{ [childId: string]: any[] }>({})
-  const [announcements, setAnnouncements] = useState<{ [childId: string]: any[] }>({})
+  const [childStats, setChildStats] = useState<{ [childId: string]: any }>({});
+  const [childGrades, setChildGrades] = useState<{ [childId: string]: any[] }>(
+    {}
+  );
+  const [childAttendance, setChildAttendance] = useState<{
+    [childId: string]: any[];
+  }>({});
+  const [announcements, setAnnouncements] = useState<{
+    [childId: string]: any[];
+  }>({});
 
   useEffect(() => {
     // Check if parent is logged in
-    const parentData = localStorage.getItem("parent")
-    const childrenData = localStorage.getItem("parentChildren")
+    const parentData = localStorage.getItem('parent');
+    const childrenData = localStorage.getItem('parentChildren');
 
     if (!parentData) {
-      router.push("/")
-      return
+      router.push('/');
+      return;
     }
 
     try {
-      setParent(JSON.parse(parentData))
+      setParent(JSON.parse(parentData));
       if (childrenData) {
-        const parsedChildren = JSON.parse(childrenData)
-        setChildren(parsedChildren)
+        const parsedChildren = JSON.parse(childrenData);
+        setChildren(parsedChildren);
         if (parsedChildren.length > 0) {
-          setSelectedChild(parsedChildren[0])
+          setSelectedChild(parsedChildren[0]);
         }
-        
+
         // Initialize mock dashboard data for each child
-        const stats: any = {}
-        const grades: any = {}
-        const attendance: any = {}
-        const announcements_data: any = {}
-        
+        const stats: any = {};
+        const grades: any = {};
+        const attendance: any = {};
+        const announcements_data: any = {};
+
         parsedChildren.forEach((child: Child) => {
-          const childId = String(child.id)
-          
-          // Mock stats
+          const childId = String(child.id);
+
+          // Placeholder stats (updated after attendance fetch)
           stats[childId] = {
-            gpa: 93.5 + Math.random() * 3,
-            attendanceRate: 92 + Math.random() * 6,
-            behaviorScore: 85 + Math.random() * 10,
-            pendingTasks: Math.floor(Math.random() * 5),
+            gpa: 0,
+            attendanceRate: 0,
+            behaviorScore: 0,
+            pendingTasks: 0,
+          };
+
+          // Placeholder grades
+          grades[childId] = [];
+
+          // Placeholder attendance — real data fetched below
+          attendance[childId] = [];
+
+          // Placeholder announcements
+          announcements_data[childId] = [];
+        });
+
+        setChildStats(stats);
+        setChildGrades(grades);
+        setChildAttendance(attendance);
+        setAnnouncements(announcements_data);
+
+        // Fetch real attendance for each child
+        parsedChildren.forEach(async (child: Child) => {
+          try {
+            const res = await fetch(
+              `/api/parent/student-attendance?student_id=${child.id}&days=30`
+            );
+            const json = await res.json();
+            if (json.success && Array.isArray(json.attendance)) {
+              const childId = String(child.id);
+              setChildAttendance((prev) => ({
+                ...prev,
+                [childId]: json.attendance,
+              }));
+
+              // Compute attendance rate from time-in records
+              const timeIns = json.attendance.filter(
+                (r: any) =>
+                  !r.scan_type ||
+                  r.scan_type === 'timein' ||
+                  r.scan_type === 'time_in'
+              );
+              const presentCount = timeIns.filter(
+                (r: any) => r.status?.toLowerCase() === 'present'
+              ).length;
+              const rate =
+                timeIns.length > 0
+                  ? Math.round((presentCount / timeIns.length) * 100)
+                  : 0;
+              setChildStats((prev) => ({
+                ...prev,
+                [childId]: { ...prev[childId], attendanceRate: rate },
+              }));
+            }
+          } catch {
+            // silently ignore — attendance stays empty
           }
-          
-          // Mock grades
-          grades[childId] = [
-            { subject: "Mathematics", grade: "95", lastUpdated: new Date().toISOString() },
-            { subject: "English", grade: "92", lastUpdated: new Date().toISOString() },
-            { subject: "Science", grade: "94", lastUpdated: new Date().toISOString() },
-            { subject: "Filipino", grade: "90", lastUpdated: new Date().toISOString() },
-            { subject: "History", grade: "93", lastUpdated: new Date().toISOString() },
-            { subject: "PE", grade: "96", lastUpdated: new Date().toISOString() },
-          ]
-          
-          // Mock attendance (last 7 days)
-          const attendanceRecords = []
-          for (let i = 6; i >= 0; i--) {
-            const date = new Date()
-            date.setDate(date.getDate() - i)
-            const statuses = ['present', 'present', 'present', 'present', 'late', 'present']
-            attendanceRecords.push({
-              date: date.toISOString(),
-              status: statuses[Math.floor(Math.random() * statuses.length)],
-              time: '7:45 AM',
-            })
-          }
-          attendance[childId] = attendanceRecords
-          
-          // Mock announcements
-          announcements_data[childId] = [
-            {
-              id: '1',
-              title: 'Parent-Teacher Conference Next Week',
-              date: new Date().toISOString(),
-              from: 'Homeroom Teacher',
-              priority: 'high',
-            },
-            {
-              id: '2',
-              title: 'Field Trip Permission Slip Required',
-              date: new Date().toISOString(),
-              from: 'Class Adviser',
-              priority: 'medium',
-            },
-            {
-              id: '3',
-              title: 'Upcoming School Event',
-              date: new Date().toISOString(),
-              from: 'School Admin',
-              priority: 'low',
-            },
-          ]
-        })
-        
-        setChildStats(stats)
-        setChildGrades(grades)
-        setChildAttendance(attendance)
-        setAnnouncements(announcements_data)
+        });
       }
     } catch (error) {
-      console.error("Error parsing parent data:", error)
-      router.push("/")
+      console.error('Error parsing parent data:', error);
+      router.push('/');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [router])
+  }, [router]);
 
   const handleLogout = async () => {
     const confirmed = await showConfirm({
-      message: "Are you sure you want to log out?",
-      confirmText: "Logout",
-      cancelText: "Cancel",
-      variant: "destructive"
-    })
-    
-    if (confirmed) {
-      await supabase.auth.signOut()
-      localStorage.removeItem("parent")
-      localStorage.removeItem("parentChildren")
-      router.push("/")
-    }
-  }
+      message: 'Are you sure you want to log out?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    });
 
+    if (confirmed) {
+      await supabase.auth.signOut();
+      localStorage.removeItem('parent');
+      localStorage.removeItem('parentChildren');
+      router.push('/');
+    }
+  };
 
   const handleAddChild = async () => {
     if (!studentNumber.trim()) {
-      setAddError("Please enter a student number")
-      return
+      setAddError('Please enter a student number');
+      return;
     }
 
-    setIsAddingChild(true)
-    setAddError("")
+    setIsAddingChild(true);
+    setAddError('');
 
     try {
-      const response = await fetch("/api/parent/link-student", {
-        method: "POST",
+      const response = await fetch('/api/parent/link-student', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           parent_id: parent.id,
           student_number: studentNumber.trim(),
           relationship_type: relationshipType,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setAddError(data.error || "Failed to add student")
-        return
+        setAddError(data.error || 'Failed to add student');
+        return;
       }
 
       // Add the new student to the children list
@@ -202,35 +234,35 @@ export default function ParentPortal() {
         grade_level: data.student.grade_level,
         section: data.student.section,
         email: data.student.email,
-      }
+      };
 
-      const updatedChildren = [...children, newChild]
-      setChildren(updatedChildren)
-      localStorage.setItem("parentChildren", JSON.stringify(updatedChildren))
+      const updatedChildren = [...children, newChild];
+      setChildren(updatedChildren);
+      localStorage.setItem('parentChildren', JSON.stringify(updatedChildren));
 
       if (updatedChildren.length === 1) {
-        setSelectedChild(newChild)
+        setSelectedChild(newChild);
       }
 
       // Reset form
-      setStudentNumber("")
-      setRelationshipType("parent")
-      setShowAddDialog(false)
+      setStudentNumber('');
+      setRelationshipType('parent');
+      setShowAddDialog(false);
 
-      showAlert({ message: "Student added successfully!", type: "success" })
+      showAlert({ message: 'Student added successfully!', type: 'success' });
     } catch (error) {
-      console.error("Error adding student:", error)
-      setAddError("Failed to add student. Please try again.")
+      console.error('Error adding student:', error);
+      setAddError('Failed to add student. Please try again.');
     } finally {
-      setIsAddingChild(false)
+      setIsAddingChild(false);
     }
-  }
+  };
 
   const handleViewStudentPage = (child: Child) => {
     // Store child data temporarily and redirect to student page
-    localStorage.setItem("student", JSON.stringify(child))
-    window.open(`/student?parentView=true`, "_blank")
-  }
+    localStorage.setItem('student', JSON.stringify(child));
+    window.open(`/student?parentView=true`, '_blank');
+  };
 
   if (loading) {
     return (
@@ -240,7 +272,7 @@ export default function ParentPortal() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!parent || children.length === 0) {
@@ -250,7 +282,8 @@ export default function ParentPortal() {
           <CardHeader>
             <CardTitle>No Children Found</CardTitle>
             <CardDescription>
-              You don't have any children linked to your account. Please contact the school administrator.
+              You don't have any children linked to your account. Please contact
+              the school administrator.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -261,7 +294,7 @@ export default function ParentPortal() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -279,8 +312,12 @@ export default function ParentPortal() {
                 className="rounded-full"
               />
               <div>
-                <h1 className="text-xl font-bold text-red-800">Parent/Guardian Portal</h1>
-                <p className="text-sm text-gray-600">Sto Niño de Praga Academy</p>
+                <h1 className="text-xl font-bold text-red-800">
+                  Guardian Portal
+                </h1>
+                <p className="text-sm text-gray-600">
+                  Sto Niño de Praga Academy
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -298,7 +335,8 @@ export default function ParentPortal() {
                   <DialogHeader>
                     <DialogTitle>Add Your Child</DialogTitle>
                     <DialogDescription>
-                      Enter your child's student number to link them to your account.
+                      Enter your child's student number to link them to your
+                      account.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
@@ -314,12 +352,15 @@ export default function ParentPortal() {
                     </div>
                     <div>
                       <Label htmlFor="relationship">Relationship</Label>
-                      <Select value={relationshipType} onValueChange={setRelationshipType} disabled={isAddingChild}>
+                      <Select
+                        value={relationshipType}
+                        onValueChange={setRelationshipType}
+                        disabled={isAddingChild}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="parent">Parent</SelectItem>
                           <SelectItem value="guardian">Guardian</SelectItem>
                           <SelectItem value="mother">Mother</SelectItem>
                           <SelectItem value="father">Father</SelectItem>
@@ -337,14 +378,14 @@ export default function ParentPortal() {
                         disabled={isAddingChild}
                         className="flex-1 bg-red-800 hover:bg-red-700"
                       >
-                        {isAddingChild ? "Adding..." : "Add Student"}
+                        {isAddingChild ? 'Adding...' : 'Add Student'}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setShowAddDialog(false)
-                          setStudentNumber("")
-                          setAddError("")
+                          setShowAddDialog(false);
+                          setStudentNumber('');
+                          setAddError('');
                         }}
                         disabled={isAddingChild}
                       >
@@ -364,8 +405,10 @@ export default function ParentPortal() {
                 </Button>
               </Link>
               <div className="text-right">
-                <p className="font-medium text-red-800">{parent.name || parent.email || "Parent/Guardian"}</p>
-                <p className="text-sm text-gray-600">Parent/Guardian</p>
+                <p className="font-medium text-red-800">
+                  {parent.name || parent.email || 'Guardian'}
+                </p>
+                <p className="text-sm text-gray-600">Guardian</p>
               </div>
               <Button
                 onClick={handleLogout}
@@ -384,23 +427,38 @@ export default function ParentPortal() {
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8">
-            <TabsTrigger value="dashboard" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
+            <TabsTrigger
+              value="dashboard"
+              className="data-[state=active]:bg-red-800 data-[state=active]:text-white"
+            >
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="children" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
+            <TabsTrigger
+              value="children"
+              className="data-[state=active]:bg-red-800 data-[state=active]:text-white"
+            >
               <User className="w-4 h-4 mr-2" />
               My Children
             </TabsTrigger>
-            <TabsTrigger value="attendance" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
+            <TabsTrigger
+              value="attendance"
+              className="data-[state=active]:bg-red-800 data-[state=active]:text-white"
+            >
               <Clock className="w-4 h-4 mr-2" />
               Attendance
             </TabsTrigger>
-            <TabsTrigger value="messages" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
+            <TabsTrigger
+              value="messages"
+              className="data-[state=active]:bg-red-800 data-[state=active]:text-white"
+            >
               <MessageSquare className="w-4 h-4 mr-2" />
               Messages
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="data-[state=active]:bg-red-800 data-[state=active]:text-white">
+            <TabsTrigger
+              value="schedule"
+              className="data-[state=active]:bg-red-800 data-[state=active]:text-white"
+            >
               <Calendar className="w-4 h-4 mr-2" />
               Schedule
             </TabsTrigger>
@@ -410,9 +468,11 @@ export default function ParentPortal() {
           <TabsContent value="dashboard" className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Welcome, {parent.name || parent.email || "Parent/Guardian"}!
+                Welcome, {parent.name || parent.email || 'Guardian'}!
               </h2>
-              <p className="text-gray-600">Monitor your children's academic progress and school activities.</p>
+              <p className="text-gray-600">
+                Monitor your children's academic progress and school activities.
+              </p>
             </div>
 
             {/* Integrated Dashboard Component */}
@@ -428,22 +488,32 @@ export default function ParentPortal() {
           {/* My Children Tab */}
           <TabsContent value="children" className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">My Children</h2>
-              <p className="text-gray-600">View and access your children's student portals.</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                My Children
+              </h2>
+              <p className="text-gray-600">
+                View and access your children's student portals.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {children.map((child) => (
-                <Card key={child.id} className="border-red-200 hover:shadow-lg transition-shadow">
+                <Card
+                  key={child.id}
+                  className="border-red-200 hover:shadow-lg transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex items-center space-x-4">
                       <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                        {child.photo || child.name?.charAt(0) || "S"}
+                        {child.photo || child.name?.charAt(0) || 'S'}
                       </div>
                       <div className="flex-1">
-                        <CardTitle className="text-red-800">{child.name}</CardTitle>
+                        <CardTitle className="text-red-800">
+                          {child.name}
+                        </CardTitle>
                         <CardDescription>
-                          {child.grade_level || "N/A"} - {child.section || "N/A"}
+                          {child.grade_level || 'N/A'} -{' '}
+                          {child.section || 'N/A'}
                         </CardDescription>
                       </div>
                     </div>
@@ -452,11 +522,15 @@ export default function ParentPortal() {
                     <div className="space-y-3">
                       <div>
                         <p className="text-sm text-gray-600">Student ID</p>
-                        <p className="font-medium">{child.student_id || "N/A"}</p>
+                        <p className="font-medium">
+                          {child.student_id || 'N/A'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Email</p>
-                        <p className="font-medium text-sm">{child.email || "N/A"}</p>
+                        <p className="font-medium text-sm">
+                          {child.email || 'N/A'}
+                        </p>
                       </div>
                       <Button
                         onClick={() => handleViewStudentPage(child)}
@@ -474,41 +548,116 @@ export default function ParentPortal() {
 
           {/* Attendance Tab */}
           <TabsContent value="attendance" className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Attendance Records</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Attendance Records
+            </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {children.map((child) => (
-                <Card key={child.id}>
-                  <CardHeader>
-                    <CardTitle className="text-red-800">{child.name}</CardTitle>
-                    <CardDescription>
-                      {child.grade_level || "N/A"} - {child.section || "N/A"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium">Overall Attendance</span>
-                          <span className="text-sm text-gray-500">Loading...</span>
+              {children.map((child) => {
+                const childId = String(child.id);
+                const records: any[] = childAttendance[childId] ?? [];
+                const timeIns = records.filter(
+                  (r) =>
+                    !r.scan_type ||
+                    r.scan_type === 'timein' ||
+                    r.scan_type === 'time_in'
+                );
+                const presentCount = timeIns.filter(
+                  (r) => r.status?.toLowerCase() === 'present'
+                ).length;
+                const rate =
+                  timeIns.length > 0
+                    ? Math.round((presentCount / timeIns.length) * 100)
+                    : null;
+                const recent = records.slice(0, 7);
+
+                return (
+                  <Card key={child.id}>
+                    <CardHeader>
+                      <CardTitle className="text-red-800">
+                        {child.name}
+                      </CardTitle>
+                      <CardDescription>
+                        {child.grade_level || 'N/A'} - {child.section || 'N/A'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium">
+                              Overall Attendance (30 days)
+                            </span>
+                            <span className="text-sm font-semibold text-red-800">
+                              {rate === null ? 'No records' : `${rate}%`}
+                            </span>
+                          </div>
+                          <Progress value={rate ?? 0} className="h-2" />
                         </div>
-                        <Progress value={0} className="h-2" />
+
+                        {recent.length > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                              Recent Records
+                            </p>
+                            {recent.map((r, i) => {
+                              const dt = new Date(r.date);
+                              const status = (
+                                r.status || 'present'
+                              ).toLowerCase();
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0"
+                                >
+                                  <span className="text-gray-600">
+                                    {dt.toLocaleDateString('en-PH', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })}
+                                    {r.time ? (
+                                      <span className="text-gray-400 ml-1 text-xs">
+                                        {r.time}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      status === 'present'
+                                        ? 'bg-green-50 text-green-700'
+                                        : status === 'late'
+                                          ? 'bg-yellow-50 text-yellow-700'
+                                          : status === 'excused'
+                                            ? 'bg-blue-50 text-blue-700'
+                                            : 'bg-red-50 text-red-700'
+                                    }`}
+                                  >
+                                    {status.charAt(0).toUpperCase() +
+                                      status.slice(1)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center">
+                            No attendance records in the last 30 days.
+                          </p>
+                        )}
+
+                        <Button
+                          onClick={() => handleViewStudentPage(child)}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Student Portal
+                        </Button>
                       </div>
-                      <p className="text-sm text-gray-500 text-center">
-                        Click "View Student Portal" to see detailed attendance records
-                      </p>
-                      <Button
-                        onClick={() => handleViewStudentPage(child)}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Student Portal
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
@@ -519,13 +668,17 @@ export default function ParentPortal() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-red-800">Recent Messages</CardTitle>
-                <CardDescription>Communications from teachers and school administration</CardDescription>
+                <CardDescription>
+                  Communications from teachers and school administration
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-gray-500">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                   <p>No messages yet.</p>
-                  <p className="text-sm mt-2">Messages from teachers will appear here.</p>
+                  <p className="text-sm mt-2">
+                    Messages from teachers will appear here.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -533,15 +686,19 @@ export default function ParentPortal() {
 
           {/* Schedule Tab */}
           <TabsContent value="schedule" className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Class Schedules</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Class Schedules
+            </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {children.map((child) => (
                 <Card key={child.id}>
                   <CardHeader>
-                    <CardTitle className="text-red-800">{child.name}'s Schedule</CardTitle>
+                    <CardTitle className="text-red-800">
+                      {child.name}'s Schedule
+                    </CardTitle>
                     <CardDescription>
-                      {child.grade_level || "N/A"} - {child.section || "N/A"}
+                      {child.grade_level || 'N/A'} - {child.section || 'N/A'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -565,5 +722,5 @@ export default function ParentPortal() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

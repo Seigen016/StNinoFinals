@@ -51,10 +51,10 @@ export async function GET(request: NextRequest) {
     // Get students enrolled in these classes
     const classIds = classes.map(c => c.id)
     const { data: enrollments, error: enrollmentsError } = await admin
-      .from('class_enrollments')
-      .select('student_id, class_id')
+      .from('user_classes')
+      .select('user_id, class_id')
       .in('class_id', classIds)
-      .eq('status', 'active')
+      .eq('membership_type', 'student')
 
     if (enrollmentsError) {
       console.error('Error fetching enrollments:', enrollmentsError)
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get student details
-    const studentIds = [...new Set(enrollments.map(e => e.student_id))]
+    const studentIds = [...new Set(enrollments.map(e => e.user_id))]
     const { data: students, error: studentsError } = await admin
       .from('users')
       .select('id, first_name, last_name, middle_name, student_number, email, grade_level, section')
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     // Map students with their class info
     const studentsWithClasses = students?.map(student => {
-      const studentEnrollments = enrollments.filter(e => e.student_id === student.id)
+      const studentEnrollments = enrollments.filter(e => e.user_id === student.id)
       const studentClasses = classes.filter(c => studentEnrollments.some(e => e.class_id === c.id))
       
       return {

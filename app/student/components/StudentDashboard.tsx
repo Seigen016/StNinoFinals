@@ -52,34 +52,6 @@ export function StudentDashboard({ stats, assignments, courseProgress, grades }:
 
   return (
     <div className="space-y-6">
-      {/* Quick Access Actions */}
-      <Card className="bg-gradient-to-r from-red-50 to-orange-50">
-        <CardHeader>
-          <CardTitle>Quick Access</CardTitle>
-          <CardDescription>Common student actions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button className="p-3 bg-white border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all">
-              <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-red-600" />
-              <p className="text-xs font-medium">Take Attendance</p>
-            </button>
-            <button className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all">
-              <BookOpen className="h-6 w-6 mx-auto mb-1 text-blue-600" />
-              <p className="text-xs font-medium">Check Grades</p>
-            </button>
-            <button className="p-3 bg-white border border-green-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition-all">
-              <TrendingUp className="h-6 w-6 mx-auto mb-1 text-green-600" />
-              <p className="text-xs font-medium">View Progress</p>
-            </button>
-            <button className="p-3 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all">
-              <Calendar className="h-6 w-6 mx-auto mb-1 text-purple-600" />
-              <p className="text-xs font-medium">Enrollment Status</p>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-blue-500">

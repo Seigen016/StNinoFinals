@@ -1,3 +1,4 @@
+import { getTodayISO } from '@/lib/academic-period'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
 
@@ -40,13 +41,13 @@ export async function GET(request: Request) {
     const startDateStr = startDate || (() => {
       const d = new Date()
       d.setDate(d.getDate() - 30)
-      return d.toISOString().split('T')[0]
+      return getTodayISO(d)
     })()
-    const endDateStr = endDate || new Date().toISOString().split('T')[0]
+    const endDateStr = endDate || getTodayISO()
     
     // Query range: from start of startDate to end of endDate (inclusive)
-    const startISO = `${startDateStr}T00:00:00.000Z`
-    const endISO = `${endDateStr}T23:59:59.999Z`
+    const startISO = `${startDateStr}T00:00:00.000+08:00`
+    const endISO = `${endDateStr}T23:59:59.999+08:00`
     
     console.log('🔍 Querying attendance records with student data...')
     
@@ -228,7 +229,7 @@ export async function GET(request: Request) {
       )
     }
     
-    // Get unique grade levels and sections from the fetched records
+    // Get unique grade levels and sections from records
     const uniqueStudents = new Map()
     finalRecords.forEach((record: any) => {
       if (record.users) {
@@ -236,8 +237,22 @@ export async function GET(request: Request) {
       }
     })
     const studentsArray = Array.from(uniqueStudents.values())
-    const gradeLevels = [...new Set(studentsArray.map((s: any) => s.grade_level).filter(Boolean))].sort()
-    const sections = [...new Set(studentsArray.map((s: any) => s.section).filter(Boolean))].sort()
+    const gradeLevelsFromRecords = studentsArray.map((s: any) => s.grade_level).filter(Boolean)
+    const sectionsFromRecords = studentsArray.map((s: any) => s.section).filter(Boolean)
+
+    // Also fetch all grade levels and sections from the users table so filters always show
+    // all available options even when no attendance records exist for some groups
+    const { data: allStudents } = await admin
+      .from('users')
+      .select('grade_level, section')
+      .eq('role', 'student')
+      .not('section', 'is', null)
+
+    const allGradeLevels = (allStudents ?? []).map((s: any) => s.grade_level).filter(Boolean)
+    const allSections = (allStudents ?? []).map((s: any) => s.section).filter(Boolean)
+
+    const gradeLevels = [...new Set([...gradeLevelsFromRecords, ...allGradeLevels])].sort()
+    const sections = [...new Set([...sectionsFromRecords, ...allSections])].sort()
     
     console.log(`📈 Returning data: ${studentList.length} students, ${totalDays} total days, ${overallPresentPercentage}% present`)
     

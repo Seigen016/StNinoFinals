@@ -3,9 +3,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
-/**
- * User interface representing authenticated user data
- */
 export interface User {
     id: string;
     email: string;
@@ -14,66 +11,80 @@ export interface User {
     last_name?: string;
 }
 
-/**
- * Context type for user authentication state
- */
-interface UserContextType {    
+interface UserContextType {
     user: User | null;
 }
 
-/**
- * React Context for managing user authentication across the app
- */
 const UserContext = createContext<UserContextType | null>(null);
 
-/**
- * UserProvider Component
- * Provides user authentication state to all child components
- * Automatically fetches user data on mount using Supabase Auth
- * 
- * @param children - Child components that need access to user state
- */
+// Keys the custom portals use to store session in localStorage
+const ROLE_STORAGE_KEYS: { key: string; role: string }[] = [
+    { key: 'student',  role: 'student'  },
+    { key: 'teacher',  role: 'teacher'  },
+    { key: 'admin',    role: 'admin'    },
+    { key: 'parent',   role: 'parent'   },
+];
+
+function getUserFromLocalStorage(): User | null {
+    try {
+        for (const { key, role } of ROLE_STORAGE_KEYS) {
+            const raw = localStorage.getItem(key);
+            if (!raw) continue;
+            const data = JSON.parse(raw);
+            if (data?.id) {
+                return {
+                    id:         String(data.id),
+                    email:      data.email      || '',
+                    role,
+                    first_name: data.first_name || undefined,
+                    last_name:  data.last_name  || undefined,
+                };
+            }
+        }
+    } catch { /* ignore parse errors */ }
+    return null;
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
 
-    /**
-     * Fetches current authenticated user from Supabase
-     * Sets user state or null if not authenticated
-     */
-    const getUser = async () => {
-        const {data: authData, error: authError} = await supabase.auth.getUser();
-        if(authError || !authData.user){
-            console.log("Error fetching user:", authError?.message);
-            setUser(null);
-        } else {
-            // Fetch full user profile from users table to get role
-            const { data: profileData, error: profileError } = await supabase
+    useEffect(() => {
+        // 1. Try localStorage first (custom portal auth)
+        const localUser = getUserFromLocalStorage();
+        if (localUser) {
+            setUser(localUser);
+            return;
+        }
+
+        // 2. Fall back to Supabase JWT session (standard auth)
+        supabase.auth.getUser().then(({ data, error }) => {
+            if (error || !data.user) { setUser(null); return; }
+            supabase
                 .from('users')
                 .select('id, email, role, first_name, last_name')
-                .eq('id', authData.user.id)
-                .single();
-            
-            if (profileError || !profileData) {
-                console.log("Error fetching user profile:", profileError?.message);
-                setUser({
-                    id: authData.user.id,
-                    email: authData.user.email || '',
+                .eq('id', data.user.id)
+                .single()
+                .then(({ data: profile }) => {
+                    if (profile) {
+                        setUser({
+                            id:         profile.id,
+                            email:      profile.email ?? data.user!.email ?? '',
+                            role:       profile.role ?? undefined,
+                            first_name: profile.first_name ?? undefined,
+                            last_name:  profile.last_name  ?? undefined,
+                        });
+                    } else {
+                        setUser({ id: data.user!.id, email: data.user!.email || '' });
+                    }
                 });
-            } else {
-                setUser(profileData);
-            }
-        }
-    }
-    
-    useEffect(() => {
-        getUser();
-    });
-    
+        });
+    }, []); // run once on mount
+
     return (
-    <UserContext.Provider value={{ user }}>
-      {children}
-    </UserContext.Provider>
-  );
+        <UserContext.Provider value={{ user }}>
+            {children}
+        </UserContext.Provider>
+    );
 }
 
 /**

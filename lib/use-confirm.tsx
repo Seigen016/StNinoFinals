@@ -1,74 +1,89 @@
-"use client"
+'use client';
 
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { AlertTriangle } from "lucide-react"
-import { createContext, ReactNode, useCallback, useContext, useState } from "react"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { AlertTriangle } from 'lucide-react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useState,
+} from 'react';
 
 interface ConfirmOptions {
-  title?: string
-  message: string
-  confirmText?: string
-  cancelText?: string
-  variant?: "default" | "destructive"
+  title?: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'default' | 'destructive';
 }
 
 interface ConfirmContextType {
-  showConfirm: (options: ConfirmOptions) => Promise<boolean>
+  showConfirm: (options: ConfirmOptions) => Promise<boolean>;
 }
 
-const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined)
+const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined);
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
   const [confirmOptions, setConfirmOptions] = useState<ConfirmOptions>({
-    message: "",
-    confirmText: "Confirm",
-    cancelText: "Cancel",
-    variant: "default",
-  })
-  const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null)
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'default',
+  });
+  const [resolvePromise, setResolvePromise] = useState<
+    ((value: boolean) => void) | null
+  >(null);
 
-  const showConfirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
-    setConfirmOptions({
-      ...options,
-      confirmText: options.confirmText || "Confirm",
-      cancelText: options.cancelText || "Cancel",
-      variant: options.variant || "default",
-    })
-    setIsOpen(true)
+  const showConfirm = useCallback(
+    (options: ConfirmOptions): Promise<boolean> => {
+      setConfirmOptions({
+        ...options,
+        confirmText: options.confirmText || 'Confirm',
+        cancelText: options.cancelText || 'Cancel',
+        variant: options.variant || 'default',
+      });
 
-    return new Promise<boolean>((resolve) => {
-      setResolvePromise(() => resolve)
-    })
-  }, [])
+      return new Promise<boolean>((resolve) => {
+        setResolvePromise(() => resolve);
+        // Defer opening — same reason as showAlert. Prevents DismissableLayer
+        // collision when showConfirm is called right after closing another dialog.
+        setTimeout(() => setIsOpen(true), 0);
+      });
+    },
+    []
+  );
 
   const handleConfirm = () => {
     if (resolvePromise) {
-      resolvePromise(true)
+      resolvePromise(true);
     }
-    setIsOpen(false)
-  }
+    setIsOpen(false);
+  };
 
   const handleCancel = () => {
     if (resolvePromise) {
-      resolvePromise(false)
+      resolvePromise(false);
     }
-    setIsOpen(false)
-  }
+    setIsOpen(false);
+  };
 
   const getTitle = () => {
-    if (confirmOptions.title) return confirmOptions.title
-    return confirmOptions.variant === "destructive" ? "Confirm Action" : "Confirmation"
-  }
+    if (confirmOptions.title) return confirmOptions.title;
+    return confirmOptions.variant === 'destructive'
+      ? 'Confirm Action'
+      : 'Confirmation';
+  };
 
   return (
     <ConfirmContext.Provider value={{ showConfirm }}>
@@ -77,7 +92,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
-              <AlertTriangle className={`h-6 w-6 ${confirmOptions.variant === "destructive" ? "text-red-600" : "text-yellow-600"}`} />
+              <AlertTriangle
+                className={`h-6 w-6 ${confirmOptions.variant === 'destructive' ? 'text-red-600' : 'text-yellow-600'}`}
+              />
               <AlertDialogTitle>{getTitle()}</AlertDialogTitle>
             </div>
             <AlertDialogDescription className="whitespace-pre-line">
@@ -90,7 +107,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
-              className={confirmOptions.variant === "destructive" ? "bg-red-600 hover:bg-red-700" : ""}
+              className={
+                confirmOptions.variant === 'destructive'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : ''
+              }
             >
               {confirmOptions.confirmText}
             </AlertDialogAction>
@@ -98,13 +119,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         </AlertDialogContent>
       </AlertDialog>
     </ConfirmContext.Provider>
-  )
+  );
 }
 
 export function useConfirm() {
-  const context = useContext(ConfirmContext)
+  const context = useContext(ConfirmContext);
   if (context === undefined) {
-    throw new Error("useConfirm must be used within a ConfirmProvider")
+    throw new Error('useConfirm must be used within a ConfirmProvider');
   }
-  return context
+  return context;
 }

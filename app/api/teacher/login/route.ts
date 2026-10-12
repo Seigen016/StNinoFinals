@@ -1,74 +1,74 @@
-import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { supabase } from '@/lib/supabaseClient';
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { email, password } = body
+    const { email, password } = await request.json();
+    const emailLower = email.toLowerCase().trim();
 
     // Validate input
     if (!email || !password) {
       return NextResponse.json(
         { success: false, error: 'Email and password are required' },
         { status: 400 }
-      )
+      );
     }
 
-    const admin = getSupabaseAdmin()
+    // Use Supabase Auth for login
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email: emailLower,
+        password: password,
+      });
 
-    // Query the teachers table (case-insensitive email search)
-    const emailLower = email.toLowerCase().trim()
-    const { data: teachers, error } = await admin
-      .from('teachers')
+    if (authError) {
+      console.error('Authentication error:', authError);
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    if (!authData.user) {
+      return NextResponse.json(
+        { success: false, error: 'Login failed. Please try again.' },
+        { status: 401 }
+      );
+    }
+
+    // Query the users table specifically for this teacher
+    const { data: teacher, error } = await supabase
+      .from('users')
       .select('*')
-      .limit(10)
+      .eq('id', authData.user.id)
+      .eq('role', 'teacher')
+      .single();
 
-    if (error) {
-      console.error('Database error:', error)
+    if (error || !teacher) {
+      console.error('Teacher profile error:', error);
+
+      // Sign out if not a teacher
+      await supabase.auth.signOut();
+
       return NextResponse.json(
-        { success: false, error: 'Database connection error. Please try again.' },
-        { status: 500 }
-      )
-    }
-
-    // Find teacher by email (case-insensitive)
-    const teacher = teachers?.find((t: any) => 
-      t.email && t.email.toLowerCase().trim() === emailLower
-    )
-
-    if (!teacher) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email or password' },
+        {
+          success: false,
+          error:
+            'No teacher account found with this email. Please check your credentials.',
+        },
         { status: 401 }
-      )
+      );
     }
-
-    // Check for Password field (both lowercase and capitalized)
-    const teacherPassword = teacher.Password !== undefined ? teacher.Password : 
-                           teacher.password !== undefined ? teacher.password : null
-
-    if (!teacherPassword || teacherPassword !== password) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email or password' },
-        { status: 401 }
-      )
-    }
-
-    // Return teacher data (excluding password)
-    const teacherWithoutPassword = { ...teacher }
-    if (teacherWithoutPassword.Password !== undefined) delete teacherWithoutPassword.Password
-    if (teacherWithoutPassword.password !== undefined) delete teacherWithoutPassword.password
 
     return NextResponse.json({
       success: true,
-      teacher: teacherWithoutPassword,
-    })
+      teacher: teacher,
+    });
   } catch (e: any) {
-    console.error('Teacher login error:', e)
+    console.error('Teacher login error:', e);
     return NextResponse.json(
       { success: false, error: e?.message ?? 'Unknown error' },
       { status: 500 }
-    )
+    );
   }
 }
-

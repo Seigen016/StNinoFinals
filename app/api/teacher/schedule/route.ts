@@ -1,3 +1,4 @@
+import { normalizeSchoolYear } from '@/lib/school-year'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
                 timeStart: item.timeStart || item.start_time,
                 timeEnd: item.timeEnd || item.end_time,
                 schoolYear: classInfo.school_year,
-                semester: classInfo.semester
+                semester: (classInfo as any).quarter
               })
             })
           } else if (typeof scheduleData === 'object') {
@@ -84,8 +85,8 @@ export async function GET(request: NextRequest) {
                     day: day,
                     timeStart: timeSlot.timeStart || timeSlot.start,
                     timeEnd: timeSlot.timeEnd || timeSlot.end,
-                    schoolYear: classInfo.school_year,
-                    semester: classInfo.semester
+                    schoolYear: normalizeSchoolYear(classInfo.school_year),
+                    semester: (classInfo as any).quarter
                   })
                 })
               }
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
           timeStart: 'TBA',
           timeEnd: 'TBA',
           schoolYear: classInfo.school_year,
-          semester: classInfo.semester
+          semester: (classInfo as any).quarter
         })
       }
     })

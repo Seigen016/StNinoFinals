@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -177,7 +178,7 @@ export function TeacherManagementTab({ teachers, loadingTeachers, onTeacherAdded
                   <form onSubmit={handleAddTeacher} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="teacherFirstName">First Name *</Label>
+                        <Label htmlFor="teacherFirstName" required>First Name</Label>
                         <Input
                           id="teacherFirstName"
                           value={newTeacher.first_name}
@@ -186,7 +187,7 @@ export function TeacherManagementTab({ teachers, loadingTeachers, onTeacherAdded
                         />
                       </div>
                       <div>
-                        <Label htmlFor="teacherLastName">Last Name *</Label>
+                        <Label htmlFor="teacherLastName" required>Last Name</Label>
                         <Input
                           id="teacherLastName"
                           value={newTeacher.last_name}
@@ -204,7 +205,7 @@ export function TeacherManagementTab({ teachers, loadingTeachers, onTeacherAdded
                       />
                     </div>
                     <div>
-                      <Label htmlFor="teacherDepartment">Department *</Label>
+                      <Label htmlFor="teacherDepartment" required>Department</Label>
                       <Select
                         value={newTeacher.department}
                         onValueChange={(value) => setNewTeacher({ ...newTeacher, department: value })}
@@ -247,11 +248,10 @@ export function TeacherManagementTab({ teachers, loadingTeachers, onTeacherAdded
                     </div>
                     <div>
                       <Label htmlFor="dateHired">Date Hired</Label>
-                      <Input
-                        id="dateHired"
-                        type="date"
+                      <DatePicker
                         value={newTeacher.date_hired}
-                        onChange={(e) => setNewTeacher({ ...newTeacher, date_hired: e.target.value })}
+                        onChange={(v) => setNewTeacher({ ...newTeacher, date_hired: v })}
+                        placeholder="Select date hired"
                       />
                     </div>
                     <div className="flex justify-end space-x-2">

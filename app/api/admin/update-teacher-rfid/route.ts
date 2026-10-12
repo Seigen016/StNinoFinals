@@ -1,3 +1,4 @@
+import { findRfidOwner } from '@/lib/rfid'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
 
@@ -65,6 +66,17 @@ export async function POST(request: Request) {
     console.log(`Found teacher: ${teacherNameDisplay}`)
     console.log(`Teacher ID: ${teacher.id || teacher.teacher_id}`)
     console.log(`Assigning RFID: ${rfidCard}`)
+
+    const existingOwner = await findRfidOwner(admin, rfidCard, teacher.id || teacher.teacher_id)
+    if (existingOwner) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `This RFID card is already assigned to ${existingOwner.name} (${existingOwner.role}). Clear that assignment first before reassigning.`,
+        },
+        { status: 200 }
+      )
+    }
 
     // Update teacher with RFID card number
     const rfidValue = rfidCard.toUpperCase().trim()

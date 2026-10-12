@@ -1,3 +1,4 @@
+import { normalizeGender } from '@/lib/gender'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
@@ -42,6 +43,7 @@ export async function PUT(
       first_name,
       last_name,
       middle_name,
+      suffix,
       employee_number,
       department,
       specialization,
@@ -51,6 +53,7 @@ export async function PUT(
       date_hired,
       address,
       rfid,
+      gender,
     } = body
 
     const supabaseAdmin = getSupabaseAdmin()
@@ -60,6 +63,7 @@ export async function PUT(
     if (first_name !== undefined) updateData.first_name = first_name
     if (last_name !== undefined) updateData.last_name = last_name
     if (middle_name !== undefined) updateData.middle_name = middle_name || null
+    if (suffix !== undefined) updateData.suffix = suffix || null
     if (employee_number !== undefined) updateData.employee_number = employee_number
     if (department !== undefined) updateData.department = department || null
     if (specialization !== undefined) updateData.specialization = specialization || null
@@ -68,6 +72,7 @@ export async function PUT(
     if (date_of_birth !== undefined) updateData.date_of_birth = date_of_birth || null
     if (date_hired !== undefined) updateData.date_hired = date_hired || null
     if (address !== undefined) updateData.address = address || null
+    if (gender !== undefined) updateData.gender = normalizeGender(gender)
     if (rfid !== undefined) updateData.rfid = rfid || null
 
     // Update user record
@@ -85,10 +90,12 @@ export async function PUT(
     }
 
     // Update auth email if changed
-    try {
-      await supabaseAdmin.auth.admin.updateUserById(id, { email })
-    } catch (authError) {
-      console.error('Failed to update auth email:', authError)
+    if (email !== undefined) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(id, { email })
+      } catch (authError) {
+        console.error('Failed to update auth email:', authError)
+      }
     }
 
     return NextResponse.json({
@@ -103,39 +110,52 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+    const supabaseAdmin = getSupabaseAdmin()
+
+    if (body.restore === true) {
+      const { error } = await supabaseAdmin
+        .from('users')
+        .update({ is_archived: false, status: 'Active' } as any)
+        .eq('id', id)
+        .eq('role', 'teacher')
+      if (error) return NextResponse.json({ success: false, error: error.message }, { status: 400 })
+      return NextResponse.json({ success: true, message: 'Teacher restored successfully' })
+    }
+
+    return NextResponse.json({ success: false, error: 'Unknown patch operation' }, { status: 400 })
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error?.message || 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+    const body = await request.json().catch(() => ({}))
+    const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null
     const supabaseAdmin = getSupabaseAdmin()
 
-    // Delete from users table first
-    const { error: deleteError } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('users')
-      .delete()
+      .update({ is_archived: true, status: reason || 'Archived' } as any)
       .eq('id', id)
       .eq('role', 'teacher')
 
-    if (deleteError) {
-      return NextResponse.json(
-        { success: false, error: deleteError.message },
-        { status: 400 }
-      )
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 })
     }
 
-    // Delete auth user
-    try {
-      await supabaseAdmin.auth.admin.deleteUser(id)
-    } catch (authError) {
-      console.error('Failed to delete auth user:', authError)
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Teacher deleted successfully',
-    })
+    return NextResponse.json({ success: true, message: 'Teacher archived successfully' })
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message || 'Internal server error' },

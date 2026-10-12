@@ -55,14 +55,29 @@ export async function GET(request: Request) {
       return false
     })
 
+    // Resolve author names
+    const authorIds = [...new Set(filteredAnnouncements.map((a) => a.author_id).filter(Boolean))];
+    const authorMap: Record<string, string> = {};
+    if (authorIds.length > 0) {
+      const { data: authors } = await supabase
+        .from('users')
+        .select('id, first_name, last_name')
+        .in('id', authorIds);
+      if (authors) {
+        for (const a of authors) {
+          authorMap[a.id] = `${a.first_name || ''} ${a.last_name || ''}`.trim();
+        }
+      }
+    }
+
     // Format the announcements data
     const formattedAnnouncements = filteredAnnouncements.map((announcement) => ({
       id: announcement.id,
       title: announcement.title,
       content: announcement.content,
       date: announcement.created_at,
-      from: announcement.author_id, // You might want to join with users table to get author name
-      priority: announcement.priority || 'medium',
+      from: authorMap[announcement.author_id] || 'School Admin',
+      priority: announcement.priority || 'normal',
     }))
 
     return NextResponse.json({

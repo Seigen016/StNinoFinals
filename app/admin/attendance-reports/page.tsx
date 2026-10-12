@@ -1,816 +1,839 @@
-"use client"
+'use client';
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import { Button } from '@/components/ui/button';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
+import { Input } from '@/components/ui/input';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { endOfWeek, format, startOfWeek, subWeeks } from 'date-fns';
 import {
   ArrowLeft,
   CalendarIcon,
-  Download,
-  RefreshCcw
-} from "lucide-react"
-import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
-import { DateRange } from "react-day-picker"
+  CheckCircle2,
+  RefreshCw,
+  Search,
+  Trophy,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { DateRange } from 'react-day-picker';
 
-/**
- * Student attendance data structure
- */
 interface Student {
-  studentId: string
-  studentName: string
-  gradeLevel: string
-  section: string
-  totalDays: number
-  present: number
-  absent: number
-  late: number
-  excused: number
-  percentage: number
-  dailyAttendance: Record<string, string> // Date -> Status mapping
-  records: any[]
+  studentId: string;
+  studentName: string;
+  gradeLevel: string;
+  section: string;
+  totalDays: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  percentage: number;
+  dailyAttendance: Record<string, string>;
+  records: any[];
 }
 
-/**
- * Main data structure for attendance reports
- */
 interface AttendanceReportsData {
   general: {
-    totalStudents: number
-    totalPresent: number
-    totalAbsent: number
-    totalLate: number
-    totalDays: number
-    presentPercentage: number
-    absentPercentage: number
-  }
-  students: Student[]
-  selectedStudent: Student | null
+    totalStudents: number;
+    totalPresent: number;
+    totalAbsent: number;
+    totalLate: number;
+    totalDays: number;
+    presentPercentage: number;
+    absentPercentage: number;
+  };
+  students: Student[];
+  selectedStudent: Student | null;
   dateRange: {
-    start: string
-    end: string
-  }
+    start: string;
+    end: string;
+  };
   filters: {
-    gradeLevels: string[]
-    sections: string[]
-  }
+    gradeLevels: string[];
+    sections: string[];
+  };
 }
 
-/**
- * Attendance Reports Page
- * 
- * Displays student attendance data in a calendar-style table with filtering options.
- * Key features:
- * - Date range filtering (defaults to last 30 days)
- * - Grade level and section filtering
- * - Individual student detail view
- * - Export to CSV functionality
- * - Manila timezone handling for accurate date display
- */
-export default function AttendanceReportsPage() {
-  const [data, setData] = useState<AttendanceReportsData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedStudentId, setSelectedStudentId] = useState<string>("")
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
-  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined)
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [gradeLevel, setGradeLevel] = useState<string>("all")
-  const [section, setSection] = useState<string>("all")
-  
-  /**
-   * Initialize date range to last 30 days on component mount
-   * Uses Manila timezone to ensure dates match the backend
-   */
-  useEffect(() => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - 30)
-    
-    setDateRange({ from: start, to: end })
-  }, [])
+const CODE_META: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  PR: { label: 'Time In / Time Out', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  AC: { label: 'Absent',       bg: 'bg-red-100',     text: 'text-red-700',     dot: 'bg-red-500'     },
+  LA: { label: 'Late',         bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500'   },
+  EX: { label: 'Excused',      bg: 'bg-blue-100',    text: 'text-blue-700',    dot: 'bg-blue-500'    },
+  HO: { label: 'Holiday',      bg: 'bg-gray-100',    text: 'text-gray-500',    dot: 'bg-gray-400'    },
+  EA: { label: 'Early Absent', bg: 'bg-orange-100',  text: 'text-orange-700',  dot: 'bg-orange-500'  },
+  DA: { label: 'Day Absent',   bg: 'bg-red-100',     text: 'text-red-700',     dot: 'bg-red-400'     },
+  SU: { label: 'Suspended',    bg: 'bg-rose-100',    text: 'text-rose-700',    dot: 'bg-rose-700'    },
+  VA: { label: 'Vacation',     bg: 'bg-sky-100',     text: 'text-sky-700',     dot: 'bg-sky-400'     },
+  CR: { label: 'Credit',       bg: 'bg-purple-100',  text: 'text-purple-700',  dot: 'bg-purple-400'  },
+};
 
-  /**
-   * Fetches attendance data from API with current filters
-   * 
-   * IMPORTANT: Dates are sent as YYYY-MM-DD strings (not ISO format)
-   * to avoid timezone conversion issues. Backend handles Manila timezone.
-   */
+const getCodeMeta = (code: string) =>
+  CODE_META[code] ?? { label: code, bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' };
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+export default function AttendanceReportsPage() {
+  const [data, setData] = useState<AttendanceReportsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [gradeLevel, setGradeLevel] = useState<string>('all');
+  const [section, setSection] = useState<string>('all');
+  const [dailySearch, setDailySearch] = useState<string>('');
+
+  useEffect(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    setDateRange({ from: start, to: end });
+  }, []);
+
   const fetchData = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const params = new URLSearchParams()
+      const params = new URLSearchParams();
       if (dateRange?.from) {
-        const year = dateRange.from.getFullYear()
-        const month = String(dateRange.from.getMonth() + 1).padStart(2, '0')
-        const day = String(dateRange.from.getDate()).padStart(2, '0')
-        params.append('startDate', `${year}-${month}-${day}`)
+        const y = dateRange.from.getFullYear();
+        const m = String(dateRange.from.getMonth() + 1).padStart(2, '0');
+        const d = String(dateRange.from.getDate()).padStart(2, '0');
+        params.append('startDate', `${y}-${m}-${d}`);
       }
       if (dateRange?.to) {
-        const year = dateRange.to.getFullYear()
-        const month = String(dateRange.to.getMonth() + 1).padStart(2, '0')
-        const day = String(dateRange.to.getDate()).padStart(2, '0')
-        params.append('endDate', `${year}-${month}-${day}`)
+        const y = dateRange.to.getFullYear();
+        const m = String(dateRange.to.getMonth() + 1).padStart(2, '0');
+        const d = String(dateRange.to.getDate()).padStart(2, '0');
+        params.append('endDate', `${y}-${m}-${d}`);
       }
-      if (selectedStudentId) params.append('studentId', selectedStudentId)
-      if (gradeLevel && gradeLevel !== 'all') params.append('gradeLevel', gradeLevel)
-      if (section && section !== 'all') params.append('section', section)
-      
-      console.log('🔍 Fetching attendance reports with params:', params.toString())
-      const response = await fetch(`/api/admin/attendance-reports?${params.toString()}`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
-      console.log('📊 API Response:', result)
-      
+      if (selectedStudentId) params.append('studentId', selectedStudentId);
+      if (gradeLevel && gradeLevel !== 'all') params.append('gradeLevel', gradeLevel);
+      if (section && section !== 'all') params.append('section', section);
+
+      const response = await fetch(`/api/admin/attendance-reports?${params.toString()}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+
       if (result.success && result.data) {
-        setData(result.data)
-        setError(null)
-        // Auto-select first student if none selected
+        setData(result.data);
+        setError(null);
         if (!selectedStudentId && result.data.students.length > 0) {
-          setSelectedStudentId(result.data.students[0].studentId)
+          setSelectedStudentId(result.data.students[0].studentId);
         }
       } else {
-        setError(result.error || 'Failed to fetch attendance data')
-        setData(null)
+        setError(result.error || 'Failed to fetch attendance data');
+        setData(null);
       }
-    } catch (error: any) {
-      console.error("❌ Error fetching attendance reports:", error)
-      setError(error?.message || 'An error occurred while fetching attendance data')
-      setData(null)
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred while fetching attendance data');
+      setData(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    if (dateRange?.from && dateRange?.to) {
-      fetchData()
-    }
-  }, [dateRange, selectedStudentId, gradeLevel, section])
+    if (dateRange?.from && dateRange?.to) fetchData();
+  }, [dateRange, selectedStudentId, gradeLevel, section]);
 
   const selectedStudent = useMemo(() => {
-    if (!data || !selectedStudentId) return null
-    return data.students.find((s) => s.studentId === selectedStudentId) || data.selectedStudent
-  }, [data, selectedStudentId])
+    if (!data || !selectedStudentId) return null;
+    return data.students.find((s) => s.studentId === selectedStudentId) || data.selectedStudent;
+  }, [data, selectedStudentId]);
 
-  // Generate date range for table
   const dateColumns = useMemo(() => {
-    if (!data) return []
-    const dates: string[] = []
-    const start = new Date(data.dateRange.start)
-    const end = new Date(data.dateRange.end)
-    console.log(`start date: ${start}, end date: ${end}`);
+    if (!data) return [];
+    const dates: string[] = [];
+    const start = new Date(data.dateRange.start);
+    const end = new Date(data.dateRange.end);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(new Date(d).toISOString().split('T')[0])
+      dates.push(new Date(d).toISOString().split('T')[0]);
     }
-    
-    return dates
-  }, [data])
+    return dates;
+  }, [data]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "numeric",
-      day: "numeric",
-    })
-  }
-
-  const getAttendanceCodeColor = (code: string) => {
-    switch (code) {
-      case 'PR': return 'bg-green-500 text-white'
-      case 'AC': return 'bg-red-500 text-white'
-      case 'LA': return 'bg-yellow-500 text-white'
-      case 'EX': return 'bg-blue-500 text-white'
-      case 'HO': return 'bg-gray-400 text-white'
-      case 'EA': return 'bg-orange-500 text-white'
-      case 'DA': return 'bg-purple-500 text-white'
-      case 'SU': return 'bg-red-700 text-white'
-      case 'O': return 'bg-gray-500 text-white'
-      case 'VA': return 'bg-blue-400 text-white'
-      case 'CR': return 'bg-purple-400 text-white'
-      case 'D1': case 'D2': case 'D3': case 'D4': case 'D5': case 'D6':
-        return 'bg-indigo-500 text-white'
-      default: return 'bg-gray-300 text-gray-700'
-    }
-  }
-
-  const getAttendanceCodeLabel = (code: string) => {
-    const codes: Record<string, string> = {
-      'PR': 'Present',
-      'AC': 'Absent - Coded',
-      'LA': 'Late',
-      'EX': 'Excused',
-      'HO': 'Holiday',
-      'EA': 'Early Absent',
-      'DA': 'Day Absent',
-      'SU': 'Suspended',
-      'O': 'Other',
-      'VA': 'Vacation',
-      'CR': 'Credit',
-      'D1': 'Day 1',
-      'D2': 'Day 2',
-      'D3': 'Day 3',
-      'D4': 'Day 4',
-      'D5': 'Day 5',
-      'D6': 'Day 6',
-    }
-    return codes[code] || code
-  }
-
-  const exportToCSV = () => {
-    if (!data || !data.students.length) return
-
-    // Create CSV header
-    const headers = ['#', 'Name', 'Total Days', 'Present', 'Absent', 'Late', 'Excused', '%', ...dateColumns.map(d => formatDate(d))]
-    const rows = [headers]
-
-    // Add student data
-    data.students.forEach((student, index) => {
-      const row = [
-        (index + 1).toString(),
-        student.studentName,
-        student.totalDays.toString(),
-        student.present.toString(),
-        student.absent.toString(),
-        student.late.toString(),
-        student.excused.toString(),
-        `${student.percentage}%`,
-        ...dateColumns.map(date => student.dailyAttendance[date] || '-')
-      ]
-      rows.push(row)
-    })
-
-    // Convert to CSV string
-    const csvContent = rows.map(row => 
-      row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',')
-    ).join('\n')
-
-    // Download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    const startDateStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start'
-    const endDateStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end'
-    link.setAttribute('download', `attendance-report-${startDateStr}-to-${endDateStr}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  // Calculate attendance breakdown for selected student
   const attendanceBreakdown = useMemo(() => {
-    if (!selectedStudent) return null
-    
-    const breakdown: Record<string, number> = {
-      'PR': 0,
-      'AC': 0,
-      'LA': 0,
-      'EX': 0,
-      'HO': 0,
-      'EA': 0,
-      'DA': 0,
-      'SU': 0,
-      'O': 0,
-      'VA': 0,
-      'CR': 0,
-      'D1': 0,
-      'D2': 0,
-      'D3': 0,
-      'D4': 0,
-      'D5': 0,
-      'D6': 0,
-    }
-    
-    Object.values(selectedStudent.dailyAttendance).forEach(code => {
-      if (breakdown.hasOwnProperty(code)) {
-        breakdown[code]++
-      }
-    })
-    
-    return breakdown
-  }, [selectedStudent])
+    if (!selectedStudent) return null;
+    const breakdown: Record<string, number> = {};
+    Object.values(selectedStudent.dailyAttendance).forEach((code) => {
+      breakdown[code] = (breakdown[code] || 0) + 1;
+    });
+    return breakdown;
+  }, [selectedStudent]);
 
-  if (loading) {
+  const exportToExcel = async () => {
+    if (!data || !data.students.length) return;
+    const { downloadExcel } = await import('@/lib/export-excel');
+    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const fromStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
+    const toStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end';
+    await downloadExcel(`attendance-${fromStr}-to-${toStr}`, {
+      title: [
+        'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
+        'STUDENT ATTENDANCE REPORT',
+        `Period: ${fromStr} to ${toStr}`,
+        `Generated: ${generated}`,
+      ],
+      columns: ['#', 'Name', 'Grade', 'Section', 'Total Days', 'Time In', 'Absent', 'Late', 'Excused', '%',
+        ...dateColumns.map((d) => format(new Date(d), 'MM/dd'))],
+      colWidths: [6, 32, 16, 16, 14, 12, 12, 10, 12, 10, ...dateColumns.map(() => 10)],
+      rows: data.students.map((s, i) => [
+        i + 1, s.studentName, s.gradeLevel, s.section,
+        s.totalDays, s.present, s.absent, s.late, s.excused,
+        `${s.percentage}%`, ...dateColumns.map((d) => s.dailyAttendance[d] || '-'),
+      ]),
+      headerColor: 'red',
+    });
+  };
+
+  const exportToPDF = () => {
+    if (!data || !data.students.length) return;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const fromStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
+    const toStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end';
+
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text('STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.', 148.5, 14, { align: 'center' });
+    doc.setFontSize(11);
+    doc.text('STUDENT ATTENDANCE REPORT', 148.5, 21, { align: 'center' });
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(`Period: ${fromStr} to ${toStr}`, 148.5, 27, { align: 'center' });
+    doc.text(`Generated: ${generated}`, 148.5, 32, { align: 'center' });
+
+    autoTable(doc, {
+      startY: 38,
+      head: [['#', 'Student Name', 'Grade', 'Section', 'Total Days', 'Time In', 'Absent', 'Late', 'Excused', '%']],
+      body: data.students.map((s, i) => [i + 1, s.studentName, s.gradeLevel, s.section, s.totalDays, s.present, s.absent, s.late, s.excused, `${s.percentage}%`]),
+      theme: 'grid',
+      headStyles: { fillColor: [153, 27, 27], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' }, 7: { halign: 'center' }, 8: { halign: 'center' }, 9: { halign: 'center' } },
+      margin: { left: 15, right: 15 },
+    });
+
+    doc.save(`attendance-${fromStr}-to-${toStr}.pdf`);
+  };
+
+  /* ─── Loading skeleton ──────────────────────────────────────── */
+  if (loading && !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCcw className="w-8 h-8 animate-spin mx-auto mb-4 text-red-800" />
-          <p className="text-gray-600">Loading attendance reports...</p>
+      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-9 h-9 border-2 border-red-800 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-gray-400">Loading attendance data…</p>
         </div>
       </div>
-    )
+    );
   }
 
+  /* ─── Page ──────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-red-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b-2 border-red-800">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/admin">
-                <Button variant="ghost" size="sm" className="hover:bg-red-50">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-red-800">Attendance Reports</h1>
-                <p className="text-sm text-gray-500 mt-1">Student attendance monitoring and analytics</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button onClick={fetchData} variant="outline" size="sm" className="hover:bg-red-50">
-                <RefreshCcw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              {data && data.students.length > 0 && (
-                <Button onClick={exportToCSV} size="sm" className="bg-green-600 hover:bg-green-700">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
+    <div className="min-h-screen bg-[#F9FAFB]">
+
+      {/* ── Sticky Header ───────────────────────────────────────── */}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
+        <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/admin">
+              <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 active:scale-90 transition-[color,background-color,transform] duration-150 ease-out">
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            </Link>
+            <div className="h-5 w-px bg-gray-200" />
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-gray-900 truncate">Attendance Reports</h1>
+              {data && (
+                <p className="text-[11px] text-gray-400 truncate leading-none mt-0.5">
+                  {dateRange?.from && dateRange?.to &&
+                    `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`}
+                  {data.general.totalStudents > 0 && ` · ${data.general.totalStudents} students`}
+                </p>
               )}
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg active:scale-95 transition-[background-color,transform] duration-150 ease-out disabled:opacity-50"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
+              Refresh
+            </button>
+            {data && data.students.length > 0 && (
+              <ExportDropdown onPDF={exportToPDF} onExcel={exportToExcel} size="sm" />
+            )}
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-6">
-        {/* Date Range Filters */}
-        <div className="bg-gradient-to-r from-white to-red-50 rounded-xl shadow-md border-2 border-red-100 p-6 mb-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-red-600" />
-              Filter Options
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">Select date range and filters to view attendance data</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Date Range */}
-            <div className="space-y-2 lg:col-span-2">
-              <Label className="text-sm font-semibold text-gray-700">
-                Date Range
-              </Label>
-              <Popover open={isDatePickerOpen} onOpenChange={(open) => {
-                setIsDatePickerOpen(open)
-                if (open) {
-                  // Reset temp range to current range when opening
-                  setTempDateRange(dateRange)
-                }
-              }} modal={true}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal border-2 border-gray-200 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all",
-                      !dateRange?.from && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} –{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={tempDateRange?.from || dateRange?.from}
-                    selected={tempDateRange}
-                    onSelect={setTempDateRange}
-                    numberOfMonths={2}
-                  />
-                  <div className="p-3 border-t flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => {
-                        setTempDateRange(dateRange)
-                        setIsDatePickerOpen(false)
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-red-600 hover:bg-red-700"
-                      onClick={() => {
-                        if (tempDateRange?.from && tempDateRange?.to) {
-                          setDateRange(tempDateRange)
-                          setIsDatePickerOpen(false)
-                        }
-                      }}
-                      disabled={!tempDateRange?.from || !tempDateRange?.to}
-                    >
-                      Set Date Range
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+      {/* ── Filter Bar ──────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-screen-2xl mx-auto px-6 py-3 flex items-center gap-2 flex-wrap">
+          {/* Quick chips */}
+          {[
+            {
+              label: 'This Week',
+              fn: () =>
+                setDateRange({
+                  from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+                  to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+                }),
+            },
+            {
+              label: 'Last Week',
+              fn: () => {
+                const lw = subWeeks(new Date(), 1);
+                setDateRange({
+                  from: startOfWeek(lw, { weekStartsOn: 1 }),
+                  to: endOfWeek(lw, { weekStartsOn: 1 }),
+                });
+              },
+            },
+            {
+              label: 'Last 30 Days',
+              fn: () => {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - 30);
+                setDateRange({ from: start, to: end });
+              },
+            },
+          ].map(({ label, fn }) => (
+            <button
+              key={label}
+              onClick={fn}
+              className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full hover:border-red-700 hover:text-red-700 hover:bg-red-50 active:scale-95 transition-[color,background-color,border-color,transform] duration-150 ease-out"
+            >
+              {label}
+            </button>
+          ))}
 
-            {/* Grade Level */}
-            <div className="space-y-2">
-              <Label htmlFor="gradeFilter" className="text-sm font-semibold text-gray-700">Grade Level</Label>
-              <Select value={gradeLevel} onValueChange={setGradeLevel}>
-                <SelectTrigger id="gradeFilter" className="border-2 border-gray-200 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {data?.filters.gradeLevels.map((grade) => (
-                    <SelectItem key={grade} value={grade}>
-                      {grade}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="w-px h-5 bg-gray-200 mx-1" />
 
-            {/* Section */}
-            <div className="space-y-2">
-              <Label htmlFor="sectionFilter" className="text-sm font-semibold text-gray-700">Section</Label>
-              <Select value={section} onValueChange={setSection}>
-                <SelectTrigger id="sectionFilter" className="border-2 border-gray-200 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
-                  {data?.filters.sections.map((sec) => (
-                    <SelectItem key={sec} value={sec}>
-                      {sec}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {/* Date range picker */}
+          <Popover
+            open={isDatePickerOpen}
+            onOpenChange={(open) => {
+              setIsDatePickerOpen(open);
+              if (open) setTempDateRange(dateRange);
+            }}
+            modal={true}
+          >
+            <PopoverTrigger asChild>
+              <button
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-lg active:scale-95 transition-[color,background-color,border-color,transform] duration-150 ease-out',
+                  dateRange?.from
+                    ? 'text-gray-700 bg-white border-gray-300 hover:border-red-700'
+                    : 'text-gray-400 bg-gray-50 border-gray-200'
+                )}
+              >
+                <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                {dateRange?.from
+                  ? dateRange.to
+                    ? `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`
+                    : format(dateRange.from, 'MMM d, yyyy')
+                  : 'Select date range'}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                defaultMonth={tempDateRange?.from || dateRange?.from}
+                selected={tempDateRange}
+                onSelect={setTempDateRange}
+                numberOfMonths={2}
+              />
+              <div className="p-3 border-t flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    setTempDateRange(dateRange);
+                    setIsDatePickerOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 text-xs bg-red-800 hover:bg-red-900"
+                  onClick={() => {
+                    if (tempDateRange?.from && tempDateRange?.to) {
+                      setDateRange(tempDateRange);
+                      setIsDatePickerOpen(false);
+                    }
+                  }}
+                  disabled={!tempDateRange?.from || !tempDateRange?.to}
+                >
+                  Apply
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Grade Level */}
+          <Select value={gradeLevel} onValueChange={setGradeLevel}>
+            <SelectTrigger className="h-8 text-xs w-36 border-gray-200 rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Grades</SelectItem>
+              {data?.filters.gradeLevels.map((g) => (
+                <SelectItem key={g} value={g}>{g}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Section */}
+          <Select value={section} onValueChange={setSection}>
+            <SelectTrigger className="h-8 text-xs w-36 border-gray-200 rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sections</SelectItem>
+              {data?.filters.sections.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
 
-        {error ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <div className="text-red-600 mb-4">
-                <p className="text-lg font-semibold">Error Loading Attendance Data</p>
-                <p className="text-sm mt-2">{error}</p>
-              </div>
-              <Button onClick={fetchData} variant="outline" className="mt-4">
-                <RefreshCcw className="w-4 h-4 mr-2" />
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : !data || data.students.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-600">No attendance data available.</p>
-              <p className="text-sm text-gray-500 mt-2">Students will appear here once they start scanning their RFID cards.</p>
-              {dateRange?.from && dateRange?.to && (
-                <p className="text-xs text-gray-400 mt-4">
-                  Date Range: {format(dateRange.from, 'MMM dd, yyyy')} to {format(dateRange.to, 'MMM dd, yyyy')}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* General Attendance Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              {/* Stats Cards */}
-              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Total Students Card */}
-                <Card className="border-t-4 border-blue-600 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardContent className="pt-6 pb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-gray-600 mb-2">Total Students</div>
-                        <div className="text-4xl font-bold text-blue-600">{data.general.totalStudents}</div>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-full">
-                        <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+      {/* ── Main ────────────────────────────────────────────────── */}
+      <div className="max-w-screen-2xl mx-auto px-6 py-6 space-y-5">
 
-                {/* Present Card */}
-                <Card className="border-t-4 border-green-600 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardContent className="pt-6 pb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-gray-600 mb-2">Present Rate</div>
-                        <div className="text-4xl font-bold text-green-600">{data.general.presentPercentage.toFixed(1)}%</div>
-                        <div className="text-xs text-gray-500 mt-1">{data.general.totalPresent} students</div>
-                      </div>
-                      <div className="bg-green-100 p-3 rounded-full">
-                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Absent Card */}
-                <Card className="border-t-4 border-red-600 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardContent className="pt-6 pb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-gray-600 mb-2">Absent Rate</div>
-                        <div className="text-4xl font-bold text-red-600">{data.general.absentPercentage.toFixed(1)}%</div>
-                        <div className="text-xs text-gray-500 mt-1">{data.general.totalAbsent} students</div>
-                      </div>
-                      <div className="bg-red-100 p-3 rounded-full">
-                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Individual Student Selection */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-semibold text-gray-900">Student Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="studentSelect" className="text-sm font-medium text-gray-700 mb-2 block">Select Student</Label>
-                    <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                      <SelectTrigger id="studentSelect">
-                        <SelectValue placeholder="Select a student" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {data.students.map((student) => (
-                          <SelectItem key={student.studentId} value={student.studentId}>
-                            {student.studentName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {selectedStudent && (
-                    <>
-                      <div className="grid grid-cols-3 gap-3 pt-2">
-                        <div className="bg-gray-50 rounded-lg p-3 text-center">
-                          <div className="text-xs text-gray-600 mb-1">Total Days</div>
-                          <div className="text-xl font-bold text-gray-900">{selectedStudent.totalDays}</div>
-                        </div>
-                        <div className="bg-green-50 rounded-lg p-3 text-center">
-                          <div className="text-xs text-gray-600 mb-1">Present</div>
-                          <div className="text-xl font-bold text-green-600">{selectedStudent.present}</div>
-                        </div>
-                        <div className="bg-red-50 rounded-lg p-3 text-center">
-                          <div className="text-xs text-gray-600 mb-1">Attendance</div>
-                          <div className="text-xl font-bold text-red-600">
-                            {selectedStudent.percentage}%
-                          </div>
-                        </div>
-                      </div>
-
-                      {attendanceBreakdown && (
-                        <div className="pt-4 border-t">
-                          <div className="text-xs font-semibold text-gray-700 mb-3">Breakdown</div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            {Object.entries(attendanceBreakdown)
-                              .filter(([_, count]) => count > 0)
-                              .map(([code, count]) => (
-                                <div key={code} className="flex items-center justify-between bg-gray-50 rounded px-2 py-1">
-                                  <span className="font-medium text-gray-700">{code}</span>
-                                  <span className="text-gray-900 font-semibold">{count}</span>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-3">
+            <XCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Error loading data</p>
+              <p className="text-xs text-red-600 mt-0.5">{error}</p>
+              <button
+                onClick={fetchData}
+                className="mt-2 px-3 py-1 text-xs font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 active:scale-95 transition-[background-color,transform] duration-150 ease-out"
+              >
+                Try again
+              </button>
             </div>
+          </div>
+        )}
 
-            {/* Top Students Leaderboard */}
-            <Card className="mb-6 shadow-lg border-t-4 border-red-800">
-              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-2xl font-bold text-red-800 flex items-center gap-2">
-                      <span>🏆</span>
-                      Top Performing Students
-                    </CardTitle>
-                    <CardDescription className="mt-1">Students with highest attendance rates</CardDescription>
+        {/* Empty */}
+        {!error && (!data || data.students.length === 0) && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-6 h-6 text-gray-300" />
+            </div>
+            <p className="text-sm font-medium text-gray-600">No attendance records found</p>
+            <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+              Students appear here once they scan their RFID cards. Try adjusting the date range or filters.
+            </p>
+          </div>
+        )}
+
+        {data && data.students.length > 0 && (
+          <>
+            {/* ── KPI Cards ─────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Students */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Students</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-blue-500" />
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <p className="text-4xl font-bold text-gray-900 leading-none">{data.general.totalStudents}</p>
+                <p className="text-xs text-gray-400 mt-2">{dateColumns.length} school days tracked</p>
+              </div>
+
+              {/* Present */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Attendance Rate</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  </div>
+                </div>
+                <p className="text-4xl font-bold text-emerald-600 leading-none">
+                  {data.general.presentPercentage.toFixed(1)}%
+                </p>
+                <div className="mt-2.5 w-full bg-gray-100 rounded-full h-1.5">
+                  <div
+                    className="bg-emerald-500 h-1.5 rounded-full transition-[width] duration-700 ease-out"
+                    style={{ width: `${data.general.presentPercentage}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">{data.general.totalPresent} records</p>
+              </div>
+
+              {/* Absent */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Absent Rate</span>
+                  <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+                    <XCircle className="w-4 h-4 text-red-500" />
+                  </div>
+                </div>
+                <p className="text-4xl font-bold text-red-600 leading-none">
+                  {data.general.absentPercentage.toFixed(1)}%
+                </p>
+                <div className="mt-2.5 w-full bg-gray-100 rounded-full h-1.5">
+                  <div
+                    className="bg-red-500 h-1.5 rounded-full transition-[width] duration-700 ease-out"
+                    style={{ width: `${data.general.absentPercentage}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">{data.general.totalAbsent} records</p>
+              </div>
+
+            </div>
+
+            {/* ── Top Performers + Student Detail ───────────────── */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+              {/* Leaderboard */}
+              <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <h2 className="text-sm font-semibold text-gray-900">Top Performers</h2>
+                  <span className="ml-auto text-xs text-gray-400">Ranked by attendance rate</span>
+                </div>
+                <div className="p-5 space-y-2.5">
                   {data.students
+                    .slice()
                     .sort((a, b) => b.percentage - a.percentage)
-                    .slice(0, 10)
+                    .slice(0, 8)
                     .map((student, index) => (
                       <div
                         key={student.studentId}
-                        className={`relative p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer ${
-                          index === 0
-                            ? 'bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-100 border-yellow-400 shadow-lg'
-                            : index === 1
-                            ? 'bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 border-gray-400 shadow-md'
-                            : index === 2
-                            ? 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 border-orange-400 shadow-md'
-                            : 'bg-white border-gray-200 hover:border-red-300'
-                        }`}
-                      >
-                        {/* Rank Badge */}
-                        <div className="absolute -top-3 -left-3 z-10">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base shadow-lg ring-2 ring-white ${
-                              index === 0
-                                ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white'
-                                : index === 1
-                                ? 'bg-gradient-to-br from-gray-400 to-gray-600 text-white'
-                                : index === 2
-                                ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white'
-                                : 'bg-gradient-to-br from-red-600 to-red-800 text-white'
-                            }`}
-                          >
-                            {index + 1}
-                          </div>
-                        </div>
-
-                        {/* Trophy Icon for Top 3 */}
-                        {index < 3 && (
-                          <div className="absolute -top-3 -right-3 text-3xl animate-bounce">
-                            {index === 0 ? '🏆' : index === 1 ? '🥈' : '🥉'}
-                          </div>
+                        className={cn(
+                          'flex items-center gap-3 rounded-xl px-4 py-3 transition-[background-color] duration-150 ease-out cursor-pointer group',
+                          index === 0 && 'bg-amber-50 hover:bg-amber-100/70',
+                          index === 1 && 'bg-slate-50 hover:bg-slate-100/70',
+                          index === 2 && 'bg-orange-50 hover:bg-orange-100/70',
+                          index >= 3 && 'hover:bg-gray-50',
+                          selectedStudentId === student.studentId && index >= 3 && 'bg-red-50',
                         )}
+                        onClick={() => setSelectedStudentId(student.studentId)}
+                      >
+                        {/* Rank badge */}
+                        <div
+                          className={cn(
+                            'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm',
+                            index === 0 && 'bg-amber-400 text-white',
+                            index === 1 && 'bg-slate-400 text-white',
+                            index === 2 && 'bg-orange-400 text-white',
+                            index >= 3 && 'bg-gray-200 text-gray-600'
+                          )}
+                        >
+                          {index + 1}
+                        </div>
 
-                        {/* Student Info */}
-                        <div className="space-y-4 mt-3">
-                          <div className="font-bold text-gray-900 text-base text-center min-h-[2.5rem] flex items-center justify-center" title={student.studentName}>
-                            <span className="line-clamp-2">{student.studentName}</span>
-                          </div>
+                        {/* Avatar */}
+                        <div
+                          className={cn(
+                            'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                            index === 0 && 'bg-amber-200 text-amber-800',
+                            index === 1 && 'bg-slate-200 text-slate-700',
+                            index === 2 && 'bg-orange-200 text-orange-800',
+                            index >= 3 && 'bg-red-100 text-red-800'
+                          )}
+                        >
+                          {initials(student.studentName)}
+                        </div>
 
-                          {/* Attendance Percentage Display */}
-                          <div className="flex flex-col items-center gap-3 py-2">
-                            <div className={`text-5xl font-bold ${
-                              student.percentage >= 90
-                                ? 'text-green-600'
-                                : student.percentage >= 70
-                                ? 'text-yellow-600'
-                                : 'text-red-600'
-                            }`}>
-                              {student.percentage}%
-                            </div>
-                            
-                            {/* Progress Bar */}
-                            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  student.percentage >= 90
-                                    ? 'bg-gradient-to-r from-green-500 to-green-600'
-                                    : student.percentage >= 70
-                                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
-                                    : 'bg-gradient-to-r from-red-500 to-red-600'
-                                }`}
-                                style={{ width: `${student.percentage}%` }}
-                              />
-                            </div>
-                          </div>
+                        {/* Name + grade */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 truncate">{student.studentName}</p>
+                          <p className="text-[10px] text-gray-400">{student.gradeLevel} · {student.section}</p>
+                        </div>
 
-                          {/* Stats */}
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="text-center bg-green-50 border border-green-200 rounded-lg py-2">
-                              <div className="text-gray-600 font-medium">Present</div>
-                              <div className="font-bold text-green-700 text-base">{student.present}</div>
-                            </div>
-                            <div className="text-center bg-blue-50 border border-blue-200 rounded-lg py-2">
-                              <div className="text-gray-600 font-medium">Total</div>
-                              <div className="font-bold text-blue-700 text-base">{student.totalDays}</div>
-                            </div>
-                          </div>
-
-                          {/* Additional Info */}
-                          <div className="text-center pt-2 border-t border-gray-200">
-                            <div className="text-xs text-gray-600">
-                              {student.gradeLevel} - {student.section}
-                            </div>
+                        {/* Progress bar */}
+                        <div className="hidden sm:flex items-center gap-2 w-32 flex-shrink-0">
+                          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className={cn(
+                                'h-1.5 rounded-full transition-[width] duration-500 ease-out',
+                                student.percentage >= 90 ? 'bg-emerald-500' :
+                                student.percentage >= 75 ? 'bg-amber-500' : 'bg-red-500'
+                              )}
+                              style={{ width: `${student.percentage}%` }}
+                            />
                           </div>
                         </div>
+
+                        {/* Percentage */}
+                        <span
+                          className={cn(
+                            'text-sm font-bold flex-shrink-0 w-12 text-right',
+                            student.percentage >= 90 ? 'text-emerald-600' :
+                            student.percentage >= 75 ? 'text-amber-600' : 'text-red-600'
+                          )}
+                        >
+                          {student.percentage}%
+                        </span>
                       </div>
                     ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Daily Attendance Table */}
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-900">Daily Attendance Records</CardTitle>
-                <CardDescription>
-                  {data.students.length} student{data.students.length !== 1 ? 's' : ''} • {dateColumns.length} days
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">#</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="text-center">Total Days</TableHead>
-                        <TableHead className="text-center">Present</TableHead>
-                        <TableHead className="text-center">%</TableHead>
-                        {dateColumns.map((date) => (
-                          <TableHead key={date} className="text-center min-w-[80px]">
-                            {formatDate(date)}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.students.map((student, index) => (
-                        <TableRow key={student.studentId}>
-                          <TableCell className="font-medium">{index + 1}</TableCell>
-                          <TableCell className="font-semibold">{student.studentName}</TableCell>
-                          <TableCell className="text-center">{student.totalDays}</TableCell>
-                          <TableCell className="text-center">{student.present}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge
-                              className={
-                                student.percentage >= 90
-                                  ? 'bg-green-500'
-                                  : student.percentage >= 70
-                                  ? 'bg-yellow-500'
-                                  : 'bg-red-500'
-                              }
-                            >
-                              {student.percentage}%
-                            </Badge>
-                          </TableCell>
-                          {dateColumns.map((date) => {
-                            const code = student.dailyAttendance[date] || '-'
-                            return (
-                              <TableCell key={date} className="text-center">
-                                {code !== '-' ? (
-                                  <Badge
-                                    className={`${getAttendanceCodeColor(code)} text-xs px-1 py-0`}
-                                    title={getAttendanceCodeLabel(code)}
-                                  >
-                                    {code}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </TableCell>
-                            )
-                          })}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+              {/* Student Detail Panel */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-900">Student Detail</h2>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Click any student to inspect</p>
                 </div>
-              </CardContent>
-            </Card>
+
+                {selectedStudent ? (
+                  <div className="p-5 space-y-5">
+                    {/* Student header */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-sm font-bold text-red-800 flex-shrink-0">
+                        {initials(selectedStudent.studentName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 leading-tight truncate">
+                          {selectedStudent.studentName}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {selectedStudent.gradeLevel} · {selectedStudent.section}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Mini KPIs */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: 'Days',    value: selectedStudent.totalDays,  color: 'text-gray-800' },
+                        { label: 'Time In', value: selectedStudent.present,    color: 'text-emerald-600' },
+                        { label: 'Absent',  value: selectedStudent.absent,     color: 'text-red-600' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="bg-gray-50 rounded-xl p-3 text-center">
+                          <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
+                          <p className={cn('text-lg font-bold leading-none', color)}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Attendance rate ring / bar */}
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500 font-medium">Attendance Rate</span>
+                        <span className={cn(
+                          'text-sm font-bold',
+                          selectedStudent.percentage >= 90 ? 'text-emerald-600' :
+                          selectedStudent.percentage >= 75 ? 'text-amber-600' : 'text-red-600'
+                        )}>
+                          {selectedStudent.percentage}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={cn(
+                            'h-2 rounded-full transition-[width] duration-700 ease-out',
+                            selectedStudent.percentage >= 90 ? 'bg-emerald-500' :
+                            selectedStudent.percentage >= 75 ? 'bg-amber-500' : 'bg-red-500'
+                          )}
+                          style={{ width: `${selectedStudent.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Breakdown */}
+                    {attendanceBreakdown && Object.keys(attendanceBreakdown).length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+                          Code Breakdown
+                        </p>
+                        <div className="space-y-1.5">
+                          {Object.entries(attendanceBreakdown)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([code, count]) => {
+                              const meta = getCodeMeta(code);
+                              return (
+                                <div key={code} className="flex items-center gap-2">
+                                  <div className={cn('w-2 h-2 rounded-full flex-shrink-0', meta.dot)} />
+                                  <span className="text-xs text-gray-600 flex-1 truncate">{meta.label}</span>
+                                  <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-md', meta.bg, meta.text)}>
+                                    {count}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-400">
+                    <p className="text-xs">Select a student from the table or leaderboard</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Daily Attendance Table ─────────────────────────── */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Attendance Records</h2>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {data.students.length} student{data.students.length !== 1 ? 's' : ''} · {dateColumns.length} days
+                  </p>
+                </div>
+                {/* Search */}
+                <div className="relative w-48">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <Input
+                    placeholder="Search student…"
+                    value={dailySearch}
+                    onChange={(e) => setDailySearch(e.target.value)}
+                    className="pl-8 h-8 text-xs"
+                  />
+                </div>
+                {/* Legend */}
+                <div className="ml-auto hidden lg:flex items-center gap-3">
+                  {(['PR', 'AC', 'LA', 'EX', 'HO'] as const).map((code) => {
+                    const meta = getCodeMeta(code);
+                    return (
+                      <div key={code} className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <div className={cn('w-2 h-2 rounded-full', meta.dot)} />
+                        {meta.label}
+                      </div>
+                    );
+                  })}
+                  <span className="text-gray-300 text-xs">+ more</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/70">
+                      <th className="text-left pl-6 pr-3 py-3 font-semibold text-gray-400 w-10 sticky left-0 bg-gray-50/70 z-10">
+                        #
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-500 min-w-[180px] sticky left-10 bg-gray-50/70 z-10 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+                        Student
+                      </th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-400 whitespace-nowrap">Days</th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-400 whitespace-nowrap">Time In</th>
+                      {dateColumns.map((date) => (
+                        <th
+                          key={date}
+                          className="text-center px-1 py-3 font-semibold text-gray-400 min-w-[48px]"
+                        >
+                          <div className="text-[10px] font-bold">{format(new Date(date), 'EEE')}</div>
+                          <div className="text-[10px] text-gray-300 font-normal">{format(new Date(date), 'M/d')}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.students.filter(s =>
+                      !dailySearch || s.studentName.toLowerCase().includes(dailySearch.toLowerCase())
+                    ).map((student, index) => (
+                      <tr
+                        key={student.studentId}
+                        className={cn(
+                          'border-b border-gray-50 transition-colors cursor-pointer',
+                          selectedStudentId === student.studentId
+                            ? 'bg-red-50/70 hover:bg-red-50'
+                            : 'hover:bg-gray-50/80'
+                        )}
+                        onClick={() => setSelectedStudentId(student.studentId)}
+                      >
+                        <td className={cn(
+                          'pl-6 pr-3 py-3 text-gray-300 font-medium sticky left-0 z-10',
+                          selectedStudentId === student.studentId ? 'bg-red-50/70' : 'bg-white'
+                        )}>
+                          {index + 1}
+                        </td>
+                        <td className={cn(
+                          'px-4 py-3 sticky left-10 z-10 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]',
+                          selectedStudentId === student.studentId ? 'bg-red-50/70' : 'bg-white'
+                        )}>
+                          <div className="flex items-center gap-2.5">
+                            <div className={cn(
+                              'w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                              selectedStudentId === student.studentId
+                                ? 'bg-red-200 text-red-800'
+                                : 'bg-gray-100 text-gray-600'
+                            )}>
+                              {initials(student.studentName)}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800 whitespace-nowrap">{student.studentName}</p>
+                              <p className="text-gray-400 text-[10px] leading-none mt-0.5">{student.gradeLevel} · {student.section}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-500">{student.totalDays}</td>
+                        <td className="px-4 py-3 text-center text-gray-500">{student.present}</td>
+                        {dateColumns.map((date) => {
+                          const code = student.dailyAttendance[date] || '-';
+                          const meta = getCodeMeta(code);
+                          return (
+                            <td key={date} className="px-1 py-3 text-center">
+                              {code !== '-' ? (
+                                <span
+                                  title={meta.label}
+                                  className={cn(
+                                    'inline-flex items-center justify-center w-8 h-5 rounded text-[10px] font-bold',
+                                    meta.bg,
+                                    meta.text
+                                  )}
+                                >
+                                  {code}
+                                </span>
+                              ) : (
+                                <span className="text-gray-200">–</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         )}
       </div>
     </div>
-  )
+  );
 }
-

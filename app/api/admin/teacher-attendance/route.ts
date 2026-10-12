@@ -1,3 +1,4 @@
+import { getTodayISO } from '@/lib/academic-period'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
 
@@ -14,19 +15,19 @@ export async function GET(request: Request) {
     const startDateStr = startDate || (() => {
       const d = new Date()
       d.setDate(d.getDate() - 30)
-      return d.toISOString().split('T')[0]
+      return getTodayISO(d)
     })()
-    const endDateStr = endDateParam || new Date().toISOString().split('T')[0]
+    const endDateStr = endDateParam || getTodayISO()
     
     // Convert Manila local date to UTC range
-    const startISO = `${startDateStr}T00:00:00.000Z`
-    const endISO = `${endDateStr}T23:59:59.999Z`
+    const startISO = `${startDateStr}T00:00:00.000+08:00`
+    const endISO = `${endDateStr}T23:59:59.999+08:00`
     
     // Fetch all teachers
     const { data: teachers, error: teachersError } = await admin
       .from('users')
-      .eq('role', 'teacher')
       .select('*')
+      .eq('role', 'teacher')
       .limit(1000)
     
     if (teachersError) {
