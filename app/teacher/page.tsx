@@ -19,6 +19,7 @@ import {
 import { Bell, Calendar, Clock, GraduationCap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRefresh } from '@/lib/refresh-context';
+import { formatDate } from '@/lib/format-date';
 import { useEffect, useState } from 'react';
 import {
   Bar,
@@ -366,7 +367,7 @@ export default function TeacherDashboard() {
               <h2 className="text-white font-bold text-lg leading-snug">{selectedAnnouncement.title}</h2>
               {selectedAnnouncement.published_at && (
                 <p className="text-red-200/80 text-xs mt-2">
-                  {new Date(selectedAnnouncement.published_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {formatDate(selectedAnnouncement.published_at)}
                 </p>
               )}
             </div>

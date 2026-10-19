@@ -43,7 +43,7 @@ export function parseCsv(text: string): string[][] {
 export function findGradeColumns(rows: string[][]): { start: number; numberCol: number; gradeCol: number } {
   for (let r = 0; r < Math.min(rows.length, 10); r++) {
     const cells = rows[r].map((c) => c.trim().toLowerCase());
-    const numberCol = cells.findIndex((c) => /^student\s*(no\.?|number|#)$/.test(c));
+    const numberCol = cells.findIndex((c) => /^(student\s*(no\.?|number|#)|lrn)$/.test(c));
     const gradeCol = cells.findIndex((c) => c === 'grade');
     if (numberCol !== -1 && gradeCol !== -1) return { start: r + 1, numberCol, gradeCol };
   }

@@ -25,6 +25,7 @@ import {
   TrendingUp,
   User,
 } from 'lucide-react';
+import { formatDate } from '@/lib/format-date';
 import { useState } from 'react';
 
 interface Child {
@@ -110,14 +111,6 @@ export function ParentDashboard({
       default:
         return null;
     }
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
   if (children.length === 0) {

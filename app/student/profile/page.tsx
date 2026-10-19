@@ -447,7 +447,7 @@ export default function ProfilePage() {
               { icon: User, label: 'Full Name', value: displayName },
               {
                 icon: Hash,
-                label: 'Student No.',
+                label: 'LRN',
                 value: (student as any).student_number,
               },
               { icon: CreditCard, label: 'LRN', value: (student as any).lrn },

@@ -1,4 +1,5 @@
 import { TextBeeService } from '@/services/textbee';
+import { formatDateTime } from '@/lib/format-date';
 import { NextResponse } from 'next/server';
 
 /**
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 
     const message =
       customMessage?.trim() ||
-      `[Sto Niño Portal] This is a test SMS. If you received this, SMS notifications are working correctly. — ${new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`;
+      `[Sto Niño Portal] This is a test SMS. If you received this, SMS notifications are working correctly. — ${formatDateTime(new Date())}`;
 
     const messageId = await TextBeeService.sendSms(phone, message);
 

@@ -1,3 +1,4 @@
+import { prepareEnrollmentRequest } from '@/lib/enrollment-request';
 import { getActivePeriod } from '@/lib/academic-period';
 import { friendlyError } from '@/lib/error-message';
 import { normalizeSchoolYear } from '@/lib/school-year';
@@ -94,6 +95,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const prepared = await prepareEnrollmentRequest(supabase, { studentId, gradeLevel, strand, schoolYear });
+    if ('error' in prepared) {
+      return NextResponse.json({ success: false, error: prepared.error }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from('enrollment_requests')
       .insert({
@@ -101,6 +107,7 @@ export async function POST(request: NextRequest) {
         submitted_by: studentId,
         grade_level: gradeLevel,
         strand: strand ?? null,
+        assigned_section_id: prepared.assignedSectionId,
         school_year: normalizeSchoolYear(schoolYear),
         enrollment_type: enrollmentType,
         previous_school: previousSchool ?? null,

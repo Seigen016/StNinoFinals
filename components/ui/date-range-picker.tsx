@@ -7,7 +7,6 @@ import {
   endOfMonth,
   endOfWeek,
   endOfYear,
-  format,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -16,6 +15,7 @@ import {
 } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import * as React from 'react';
+import { formatDate, formatDateRange } from '@/lib/format-date';
 
 interface DateRangeValue {
   from?: Date;
@@ -79,12 +79,8 @@ export function DateRangePicker({
   }, [open]);
 
   const label = React.useMemo(() => {
-    if (value?.from && value?.to) {
-      if (value.from.toDateString() === value.to.toDateString())
-        return format(value.from, 'MMM d, yyyy');
-      return `${format(value.from, 'MMM d, yyyy')} – ${format(value.to, 'MMM d, yyyy')}`;
-    }
-    if (value?.from) return `${format(value.from, 'MMM d, yyyy')} – ...`;
+    if (value?.from && value?.to) return formatDateRange(value.from, value.to);
+    if (value?.from) return `${formatDate(value.from)} – ...`;
     return placeholder || 'Select date range';
   }, [value, placeholder]);
 

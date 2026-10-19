@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { SchoolYearTabs } from '@/components/admin/school-year-tabs';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/data-table/Pagination';
@@ -310,7 +311,7 @@ export default function ClassesManagementPage() {
   const handleExportExcel = async () => {
     if (!viewingClass || classStudents.length === 0) return;
     const { downloadExcel } = await import('@/lib/export-excel');
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     await downloadExcel(`${viewingClass.class_name}_students`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
@@ -318,7 +319,7 @@ export default function ClassesManagementPage() {
         `Subject: ${viewingClass.class_name}  |  ${viewingClass.grade_level || ''} ${viewingClass.section ? `— ${viewingClass.section}` : ''}`,
         `Generated: ${generated}`,
       ],
-      columns: ['#', 'Student Number', 'Last Name', 'First Name', 'Grade Level', 'Section'],
+      columns: ['#', 'LRN', 'Last Name', 'First Name', 'Grade Level', 'Section'],
       colWidths: [8, 20, 30, 30, 18, 18],
       rows: classStudents.map((s, i) => [i + 1, s.student_number, s.last_name, s.first_name, s.grade_level || '', s.section || '']),
       headerColor: 'blue',
@@ -328,7 +329,7 @@ export default function ClassesManagementPage() {
   const handleExportPDF = () => {
     if (!viewingClass || classStudents.length === 0) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text('STO. NIÑO DE PRAGA ACADEMY', 105, 15, { align: 'center' });
@@ -342,7 +343,7 @@ export default function ClassesManagementPage() {
 
     autoTable(doc, {
       startY: 48,
-      head: [['#', 'Student Number', 'Last Name', 'First Name', 'Grade Level', 'Section']],
+      head: [['#', 'LRN', 'Last Name', 'First Name', 'Grade Level', 'Section']],
       body: classStudents.map((s, i) => [i + 1, s.student_number, s.last_name, s.first_name, s.grade_level || '—', s.section || '—']),
       theme: 'grid',
       headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
@@ -933,7 +934,7 @@ export default function ClassesManagementPage() {
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10">#</th>
-                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Student No.</th>
+                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">LRN</th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Grade</th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Section</th>

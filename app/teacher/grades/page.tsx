@@ -24,6 +24,7 @@ import { CheckCircle2, Clock, GraduationCap, History, Lock, Save, Search, Upload
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRefresh } from '@/lib/refresh-context';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 
 interface Teacher {
   id: number;
@@ -170,8 +171,10 @@ export default function TeacherGrades() {
       }
       const periodData = await periodRes.json();
       if (periodData.success && periodData.data) {
-        const active = periodData.data.find((p: any) => p.isActive);
-        setGradingLocked(active ? !active.isGradingOpen : false);
+        // Same date-driven pick as the server (lib/academic-period pickCurrentPeriod),
+        // not the stale is_active flag — otherwise the form looks open but every save 423s.
+        const current = periodData.data.find((p: any) => p.status === 'active');
+        setGradingLocked(current ? !current.isGradingOpen : periodData.data.length > 0);
       }
     } catch (error) {
       console.error('Error fetching teacher classes:', error);
@@ -234,7 +237,9 @@ export default function TeacherGrades() {
       );
       const failed = results.filter(r => !r.success);
       if (failed.length > 0) {
-        showAlert({ message: `${failed.length} grade(s) failed to save.`, type: 'warning' });
+        const reason = failed.find(r => r.error)?.error;
+        showAlert({ message: `${failed.length} grade(s) failed to save.${reason ? ` ${reason}` : ''}`, type: 'warning' });
+        await fetchGradesData();
       } else {
         showAlert({ message: 'Grades submitted for admin approval!', type: 'success' });
         await fetchGradesData();
@@ -303,7 +308,7 @@ export default function TeacherGrades() {
     const { downloadExcel } = await import('@/lib/export-excel');
     const selectedClass = teacherClasses.find(c => c.id === selectedClassId);
     const className = selectedClass ? selectedClass.class_name : 'Class';
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     await downloadExcel(`${className}_grades`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
@@ -311,7 +316,7 @@ export default function TeacherGrades() {
         `Class: ${className}`,
         `Generated: ${generated}`,
       ],
-      columns: ['Student Number', 'Student Name', 'Grade', 'Status'],
+      columns: ['LRN', 'Student Name', 'Grade', 'Status'],
       colWidths: [20, 40, 14, 18],
       rows: gradesData.map(s => [s.studentId || '', s.name || '', s.grade || '', s.status || 'Not submitted']),
       headerColor: 'red',
@@ -326,7 +331,7 @@ export default function TeacherGrades() {
     }
     const selectedClass = teacherClasses.find(c => c.id === selectedClassId);
     const className = selectedClass ? selectedClass.class_name : 'Class';
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
@@ -341,7 +346,7 @@ export default function TeacherGrades() {
 
     autoTable(doc, {
       startY: 48,
-      head: [['Student Number', 'Student Name', 'Grade', 'Status']],
+      head: [['LRN', 'Student Name', 'Grade', 'Status']],
       body: gradesData.map(s => [s.studentId || '', s.name || '', s.grade || '', s.status || 'Not submitted']),
       theme: 'grid',
       headStyles: { fillColor: [153, 27, 27], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
@@ -460,6 +465,31 @@ export default function TeacherGrades() {
                       Import Excel/CSV
                     </Button>
                     <ExportDropdown size="sm" onPDF={handleExportPDF} onExcel={handleExportExcel} />
+                    {/* Up top, not below the table: teachers typed grades and never scrolled to submit */}
+                    <Button
+                      size="sm"
+                      onClick={handleSaveGrades}
+                      disabled={isSavingGrades || gradingLocked}
+                      title={gradingLocked ? 'Grading period is locked' : undefined}
+                      className="bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
+                    >
+                      {isSavingGrades ? (
+                        <>
+                          <Save className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : gradingLocked ? (
+                        <>
+                          <Lock className="w-4 h-4 mr-2" />
+                          Grading Locked
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Submit Grades
+                        </>
+                      )}
+                    </Button>
                   </>
                 )}
               </div>
@@ -497,7 +527,7 @@ export default function TeacherGrades() {
                   <div className="flex-1 text-blue-800">
                     <p>
                       Imported <strong>{csvSummary.matched}</strong> grade{csvSummary.matched !== 1 ? 's' : ''} into the table below.
-                      Review the values, then click Submit Grades to save.
+                      Review the values, then click Submit Grades (top right) to save.
                     </p>
                     {csvSummary.unmatched.length > 0 && (
                       <p className="text-amber-700 mt-1">
@@ -551,7 +581,7 @@ export default function TeacherGrades() {
                   <thead>
                     <tr className="bg-gray-50">
                       <SortHeader label="Student Name" sortKey="name"        currentSort={tc.sort} onSort={tc.toggleSort} className="pl-4" />
-                      <SortHeader label="Student No."  sortKey="studentId"   currentSort={tc.sort} onSort={tc.toggleSort} />
+                      <SortHeader label="LRN"  sortKey="studentId"   currentSort={tc.sort} onSort={tc.toggleSort} />
                       <SortHeader label="Grade"        sortKey="grade"       currentSort={tc.sort} onSort={tc.toggleSort} />
                       <SortHeader label="Status"       sortKey="statusLabel" currentSort={tc.sort} onSort={tc.toggleSort} />
                     </tr>
@@ -602,7 +632,7 @@ export default function TeacherGrades() {
                                         parseFloat(student.grade) >= passingThreshold ? 'text-green-600' : 'text-red-500'
                                       }`}
                                     >
-                                      {parseFloat(student.grade) >= passingThreshold ? 'PASS' : 'FAIL'}
+                                      {parseFloat(student.grade) >= passingThreshold ? 'PASSED' : 'FAILED'}
                                     </span>
                                   )}
                                 </div>
@@ -615,7 +645,7 @@ export default function TeacherGrades() {
                                   <span className="text-gray-700">{cfg.label}</span>
                                   {student.reviewedAt && isApproved && (
                                     <span className="ml-1 text-xs text-gray-400">
-                                      {new Date(student.reviewedAt).toLocaleDateString()}
+                                      {formatDate(student.reviewedAt)}
                                     </span>
                                   )}
                                   {student.gradeId && (
@@ -672,34 +702,6 @@ export default function TeacherGrades() {
                   Rejected — update and resubmit
                 </span>
               </div>
-
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3">
-                <Button
-                  onClick={handleSaveGrades}
-                  disabled={isSavingGrades || gradingLocked}
-                  title={gradingLocked ? 'Grading period is locked' : undefined}
-                  className="bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
-                >
-                  {isSavingGrades ? (
-                    <>
-                      <Save className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : gradingLocked ? (
-                    <>
-                      <Lock className="w-4 h-4 mr-2" />
-                      Grading Locked
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Submit Grades
-                    </>
-                  )}
-                </Button>
-              </div>
             </>
           )}
         </div>
@@ -732,7 +734,7 @@ export default function TeacherGrades() {
                         {h.status === 'pending' ? 'Submitted' : cfg.label}
                       </span>
                       <span className="text-xs text-gray-400">
-                        {new Date(h.created_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
+                        {formatDateTime(h.created_at)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 mt-1.5">

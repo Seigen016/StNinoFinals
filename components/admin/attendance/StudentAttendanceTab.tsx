@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { endOfWeek, format, startOfMonth, startOfWeek, subWeeks } from 'date-fns';
+import { formatDate, formatDateRange } from '@/lib/format-date';
 
 // The table renders one column per day, so cap custom ranges at about a quarter
 const MAX_RANGE_DAYS = 92;
@@ -123,12 +124,12 @@ export function StudentAttendanceTab() {
     const { downloadExcel } = await import('@/lib/export-excel');
     const from = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
     const to   = dateRange?.to   ? format(dateRange.to,   'yyyy-MM-dd') : 'end';
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     await downloadExcel(`student-attendance-${from}-to-${to}`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
         'STUDENT ATTENDANCE REPORT',
-        `Period: ${from} to ${to}`,
+        `Period: ${formatDateRange(dateRange?.from, dateRange?.to)}`,
         `Generated: ${generated}`,
       ],
       columns: ['#', 'Name', 'Grade', 'Section', 'Days', 'Present', 'Absent', 'Late', 'Excused'],
@@ -142,7 +143,7 @@ export function StudentAttendanceTab() {
     if (!data?.students.length) return;
     const from = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
     const to   = dateRange?.to   ? format(dateRange.to,   'yyyy-MM-dd') : 'end';
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
@@ -152,7 +153,7 @@ export function StudentAttendanceTab() {
     doc.setFontSize(13); doc.setFont('helvetica', 'bold');
     doc.text('STUDENT ATTENDANCE REPORT', 148, 26, { align: 'center' });
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text(`Period: ${from} to ${to}`, 148, 32, { align: 'center' });
+    doc.text(`Period: ${formatDateRange(dateRange?.from, dateRange?.to)}`, 148, 32, { align: 'center' });
     doc.text(`Generated: ${generated}`, 148, 37, { align: 'center' });
 
     autoTable(doc, {
@@ -201,7 +202,7 @@ export function StudentAttendanceTab() {
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:border-red-700 rounded-lg transition-colors">
               <CalendarIcon className="w-3.5 h-3.5" />
-              {dateRange?.from ? (dateRange.to ? `${format(dateRange.from,'MMM d')} – ${format(dateRange.to,'MMM d, yyyy')}` : format(dateRange.from,'MMM d, yyyy')) : 'Select range'}
+              {dateRange?.from ? formatDateRange(dateRange.from, dateRange.to) : 'Select range'}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">

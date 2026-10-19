@@ -1,5 +1,6 @@
 "use client"
 
+import { formatDate, formatDateRange } from "@/lib/format-date"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -108,7 +109,7 @@ export default function TeacherAttendancePage() {
     return dates
   }, [data])
 
-  const formatDate = (dateString: string) => {
+  const formatDayLabel = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", {
       weekday: "short",
@@ -167,17 +168,17 @@ export default function TeacherAttendancePage() {
     if (!data || !data.teachers.length) return
     const { downloadExcel } = await import('@/lib/export-excel')
     const dates = getDates()
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+    const generated = formatDate(new Date())
     const startStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''
     const endStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
     await downloadExcel(`teacher-attendance-${startStr}-to-${endStr}`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
         'TEACHER ATTENDANCE REPORT',
-        `Period: ${startStr} to ${endStr}`,
+        `Period: ${formatDateRange(dateRange?.from, dateRange?.to)}`,
         `Generated: ${generated}`,
       ],
-      columns: ['#', 'Name', 'Subject', 'Total Days', 'Present', 'Absent', 'Late', '%', ...dates.map(d => formatDate(d))],
+      columns: ['#', 'Name', 'Subject', 'Total Days', 'Present', 'Absent', 'Late', '%', ...dates.map(d => formatDayLabel(d))],
       colWidths: [6, 30, 22, 14, 12, 12, 10, 10, ...dates.map(() => 12)],
       rows: data.teachers.map((teacher, i) => [
         i + 1,
@@ -197,7 +198,7 @@ export default function TeacherAttendancePage() {
   const exportToPDF = () => {
     if (!data || !data.teachers.length) return
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+    const generated = formatDate(new Date())
 
     doc.setFontSize(13); doc.setFont('helvetica', 'bold')
     doc.text('STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.', 148.5, 14, { align: 'center' })
@@ -206,7 +207,7 @@ export default function TeacherAttendancePage() {
     doc.setFontSize(9); doc.setFont('helvetica', 'normal')
     const startStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''
     const endStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
-    doc.text(`Period: ${startStr} to ${endStr}`, 148.5, 27, { align: 'center' })
+    doc.text(`Period: ${formatDateRange(dateRange?.from, dateRange?.to)}`, 148.5, 27, { align: 'center' })
     doc.text(`Generated: ${generated}`, 148.5, 32, { align: 'center' })
 
     autoTable(doc, {
@@ -271,9 +272,7 @@ export default function TeacherAttendancePage() {
                   )}>
                     <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
                     {dateRange?.from
-                      ? dateRange.to
-                        ? `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`
-                        : format(dateRange.from, 'MMM d, yyyy')
+                      ? formatDateRange(dateRange.from, dateRange.to)
                       : 'Select date range'}
                   </button>
                 </PopoverTrigger>
@@ -515,7 +514,7 @@ export default function TeacherAttendancePage() {
                         <TableHead className="text-center">%</TableHead>
                         {dateColumns.map((date) => (
                           <TableHead key={date} className="text-center min-w-[80px]">
-                            {formatDate(date)}
+                            {formatDayLabel(date)}
                           </TableHead>
                         ))}
                       </TableRow>

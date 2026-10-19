@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useRefresh } from '@/lib/refresh-context';
+import { formatDate, formatDateRange } from '@/lib/format-date';
 
 interface AttendanceRecord {
   id: string;
@@ -101,7 +102,7 @@ export default function TeacherAttendancePage() {
 
   const handleExportExcel = async () => {
     const { downloadExcel } = await import('@/lib/export-excel');
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     const startStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '';
     const endStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
     const suffix = section !== 'all' ? `_${section}` : '';
@@ -109,15 +110,15 @@ export default function TeacherAttendancePage() {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
         'ATTENDANCE LOG',
-        `Period: ${startStr} to ${endStr}${section !== 'all' ? `  |  Section: ${section}` : ''}`,
+        `Period: ${formatDateRange(dateRange?.from, dateRange?.to)}${section !== 'all' ? `  |  Section: ${section}` : ''}`,
         `Generated: ${generated}`,
       ],
-      columns: ['Date', 'Time', 'Student Name', 'Student No.', 'Grade Level', 'Section', 'Status'],
+      columns: ['Date', 'Time', 'Student Name', 'LRN', 'Grade Level', 'Section', 'Status'],
       colWidths: [18, 14, 36, 18, 18, 18, 14],
       rows: tc.rows.map((r) => {
         const dt = new Date(r.scan_time);
         return [
-          dt.toLocaleDateString('en-PH'),
+          formatDate(dt),
           dt.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
           r.student_name,
           r.student_number || '',
@@ -132,7 +133,7 @@ export default function TeacherAttendancePage() {
   const handleExportPDF = () => {
     if (tc.rows.length === 0) return;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text('STO. NIÑO DE PRAGA ACADEMY', 148, 12, { align: 'center' });
@@ -143,13 +144,13 @@ export default function TeacherAttendancePage() {
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     const startStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '';
     const endStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
-    doc.text(`Period: ${startStr} to ${endStr}${section !== 'all' ? `  |  Section: ${section}` : ''}`, 148, 32, { align: 'center' });
+    doc.text(`Period: ${formatDateRange(dateRange?.from, dateRange?.to)}${section !== 'all' ? `  |  Section: ${section}` : ''}`, 148, 32, { align: 'center' });
     doc.text(`Generated: ${generated}`, 148, 37, { align: 'center' });
 
     const tableData = tc.rows.map((r) => {
       const dt = new Date(r.scan_time);
       return [
-        dt.toLocaleDateString('en-PH'),
+        formatDate(dt),
         dt.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
         r.student_name,
         r.student_number || '—',
@@ -161,7 +162,7 @@ export default function TeacherAttendancePage() {
 
     autoTable(doc, {
       startY: 42,
-      head: [['Date', 'Time', 'Student Name', 'Student No.', 'Grade Level', 'Section', 'Status']],
+      head: [['Date', 'Time', 'Student Name', 'LRN', 'Grade Level', 'Section', 'Status']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [153, 27, 27], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
@@ -232,8 +233,8 @@ export default function TeacherAttendancePage() {
                 <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
                 {dateRange?.from
                   ? dateRange.to
-                    ? `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`
-                    : format(dateRange.from, 'MMM d, yyyy')
+                    ? formatDateRange(dateRange.from, dateRange.to)
+                    : formatDate(dateRange.from)
                   : 'Select date range'}
               </button>
             </PopoverTrigger>
@@ -276,7 +277,7 @@ export default function TeacherAttendancePage() {
               <tr>
                 <SortHeader label="Date & Time" sortKey="scan_time" currentSort={tc.sort} onSort={tc.toggleSort} />
                 <SortHeader label="Student Name" sortKey="student_name" currentSort={tc.sort} onSort={tc.toggleSort} />
-                <SortHeader label="Student No." sortKey="student_number" currentSort={tc.sort} onSort={tc.toggleSort} className="hidden sm:table-cell" />
+                <SortHeader label="LRN" sortKey="student_number" currentSort={tc.sort} onSort={tc.toggleSort} className="hidden sm:table-cell" />
                 <SortHeader label="Grade Level" sortKey="grade_level" currentSort={tc.sort} onSort={tc.toggleSort} className="hidden md:table-cell" />
                 <SortHeader label="Section" sortKey="section" currentSort={tc.sort} onSort={tc.toggleSort} />
                 <th className="text-center px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
@@ -299,7 +300,7 @@ export default function TeacherAttendancePage() {
                   return (
                     <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">
-                        <span className="font-medium">{dt.toLocaleDateString('en-PH')}</span>
+                        <span className="font-medium">{formatDate(dt)}</span>
                         <span className="text-gray-400 ml-2 text-xs">
                           {dt.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
                         </span>

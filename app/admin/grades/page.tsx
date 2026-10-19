@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import { SchoolYearTabs } from '@/components/admin/school-year-tabs';
 import { normalizeSchoolYear } from '@/lib/school-year';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import {
   GraduationCap,
   History,
   Search,
+  Undo2,
   Upload,
   XCircle,
 } from 'lucide-react';
@@ -335,15 +337,19 @@ export default function AdminGradesPage() {
     const studentName = grade.student
       ? `${grade.student.first_name} ${grade.student.last_name}`
       : 'this student';
+    // Rejecting an approved grade = "Return to teacher": it reopens for editing
+    const returning = grade.status === 'approved';
 
     let rejectionReason = '';
     if (status === 'rejected') {
       const result = await showDeletePrompt({
-        title: 'Reject Grade',
-        message: `Reject the ${grade.subject} grade (${grade.grade}) for ${studentName}? The submitting teacher will be notified.`,
-        confirmText: 'Reject',
+        title: returning ? 'Return Grade to Teacher' : 'Reject Grade',
+        message: returning
+          ? `Return the approved ${grade.subject} grade (${grade.grade}) for ${studentName} to the teacher? It will be unlocked so the teacher can correct and resubmit it.`
+          : `Reject the ${grade.subject} grade (${grade.grade}) for ${studentName}? The submitting teacher will be notified.`,
+        confirmText: returning ? 'Return' : 'Reject',
         cancelText: 'Cancel',
-        reasonLabel: 'Reason for rejection',
+        reasonLabel: returning ? 'Reason for returning' : 'Reason for rejection',
         reasonRequired: true,
       });
       if (!result?.confirmed) return;
@@ -371,7 +377,9 @@ export default function AdminGradesPage() {
       const result = await response.json();
       if (result.success) {
         showAlert({
-          message: `Grade ${status === 'approved' ? 'approved' : 'rejected'} successfully.`,
+          message: returning
+            ? 'Grade returned to the teacher for correction.'
+            : `Grade ${status === 'approved' ? 'approved' : 'rejected'} successfully.`,
           type: 'success',
         });
         fetchGrades();
@@ -511,11 +519,7 @@ export default function AdminGradesPage() {
 
   const handleExportExcel = async () => {
     const { downloadExcel } = await import('@/lib/export-excel');
-    const date = new Date().toLocaleDateString('en-PH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const date = formatDate(new Date());
     const tab =
       activeTab !== 'all'
         ? ` — ${STATUS_CONFIG[activeTab as GradeStatus]?.label ?? activeTab}`
@@ -530,7 +534,7 @@ export default function AdminGradesPage() {
         ],
         columns: [
           'Student',
-          'Student No.',
+          'LRN',
           'Subject',
           'Teacher',
           'Grade',
@@ -545,9 +549,7 @@ export default function AdminGradesPage() {
           g.teacher ? `${g.teacher.first_name} ${g.teacher.last_name}` : 'N/A',
           g.grade,
           STATUS_CONFIG[g.status]?.label ?? g.status,
-          g.created_at
-            ? new Date(g.created_at).toLocaleDateString('en-PH')
-            : '',
+          formatDate(g.created_at, ''),
         ]),
         headerColor: 'red',
       }
@@ -565,7 +567,7 @@ export default function AdminGradesPage() {
     doc.setFontSize(12);
     doc.text('Grade Approvals Report', 105, 23, { align: 'center' });
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-PH')}`, 105, 30, {
+    doc.text(`Generated: ${formatDate(new Date())}`, 105, 30, {
       align: 'center',
     });
     const tableData = filteredGrades.map((g) => [
@@ -579,7 +581,7 @@ export default function AdminGradesPage() {
     autoTable(doc, {
       startY: 36,
       head: [
-        ['Student', 'Student No.', 'Subject', 'Teacher', 'Grade', 'Status'],
+        ['Student', 'LRN', 'Subject', 'Teacher', 'Grade', 'Status'],
       ],
       body: tableData,
       theme: 'grid',
@@ -919,7 +921,7 @@ export default function AdminGradesPage() {
                         Student
                       </th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                        Student No.
+                        LRN
                       </th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                         Grade
@@ -987,11 +989,11 @@ export default function AdminGradesPage() {
                             </span>
                             {isPassing ? (
                               <span className="ml-1.5 text-[10px] font-medium text-green-500">
-                                PASS
+                                PASSED
                               </span>
                             ) : (
                               <span className="ml-1.5 text-[10px] font-medium text-red-400">
-                                FAIL
+                                FAILED
                               </span>
                             )}
                             {csvMismatches.has(entry.id) && (
@@ -1021,9 +1023,7 @@ export default function AdminGradesPage() {
                             onClick={() => setReviewingGrade(entry)}
                           >
                             {entry.created_at ? (
-                              new Date(entry.created_at).toLocaleDateString(
-                                'en-PH'
-                              )
+                              formatDate(entry.created_at)
                             ) : (
                               <span className="text-gray-300">—</span>
                             )}
@@ -1122,7 +1122,7 @@ export default function AdminGradesPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
-                        Student No.
+                        LRN
                       </p>
                       <p className="font-mono text-gray-900">
                         {reviewingGrade.student?.student_number ?? '—'}
@@ -1144,9 +1144,7 @@ export default function AdminGradesPage() {
                       </p>
                       <p className="text-gray-900">
                         {reviewingGrade.created_at
-                          ? new Date(
-                              reviewingGrade.created_at
-                            ).toLocaleDateString('en-PH')
+                          ? formatDate(reviewingGrade.created_at)
                           : '—'}
                       </p>
                     </div>
@@ -1197,9 +1195,27 @@ export default function AdminGradesPage() {
                 </Button>
               </>
             ) : (
-              <Button variant="outline" onClick={() => setReviewingGrade(null)}>
-                Close
-              </Button>
+              <>
+                {/* Only current-period grades: the teacher can't resubmit an archived quarter */}
+                {reviewingGrade?.status === 'approved' && reviewingGrade.is_current !== false && (
+                  <Button
+                    onClick={async () => {
+                      const grade = reviewingGrade;
+                      setReviewingGrade(null);
+                      await handleReview(grade, 'rejected');
+                    }}
+                    disabled={processingId === reviewingGrade.id}
+                    variant="outline"
+                    className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                  >
+                    <Undo2 className="h-4 w-4 mr-1.5" />
+                    Return to Teacher
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setReviewingGrade(null)}>
+                  Close
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
@@ -1237,10 +1253,7 @@ export default function AdminGradesPage() {
                         {cfg.label}
                       </span>
                       <span className="text-xs text-gray-400">
-                        {new Date(h.created_at).toLocaleString('en-PH', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        })}
+                        {formatDateTime(h.created_at)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 mt-1.5">

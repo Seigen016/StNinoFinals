@@ -57,6 +57,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { BookOpen, Search, Users, X } from 'lucide-react';
 import { useRefresh } from '@/lib/refresh-context';
+import { formatDate } from '@/lib/format-date';
 import { useEffect, useMemo, useState } from 'react';
 
 interface Student {
@@ -154,7 +155,7 @@ export default function TeacherClassesPage() {
   const handleExportExcel = async (classItem: ClassItem) => {
     if (!classItem.students.length) return;
     const { downloadExcel } = await import('@/lib/export-excel');
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     await downloadExcel(`${classItem.class_name}_students`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
@@ -162,7 +163,7 @@ export default function TeacherClassesPage() {
         `Class: ${classItem.class_name}${classItem.grade_level ? `  |  ${classItem.grade_level}${classItem.section ? ` — ${classItem.section}` : ''}` : ''}`,
         `Generated: ${generated}`,
       ],
-      columns: ['#', 'Student Number', 'Last Name', 'First Name', 'Grade Level', 'Section'],
+      columns: ['#', 'LRN', 'Last Name', 'First Name', 'Grade Level', 'Section'],
       colWidths: [8, 20, 30, 30, 18, 18],
       rows: classItem.students.map((s, i) => [i + 1, s.student_number, s.last_name, s.first_name, s.grade_level || '', s.section || '']),
       headerColor: 'blue',
@@ -172,7 +173,7 @@ export default function TeacherClassesPage() {
   const handleExportPDF = (classItem: ClassItem) => {
     if (!classItem.students.length) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text('STO. NIÑO DE PRAGA ACADEMY', 105, 15, { align: 'center' });
@@ -186,7 +187,7 @@ export default function TeacherClassesPage() {
 
     autoTable(doc, {
       startY: 48,
-      head: [['#', 'Student Number', 'Last Name', 'First Name', 'Grade Level', 'Section']],
+      head: [['#', 'LRN', 'Last Name', 'First Name', 'Grade Level', 'Section']],
       body: classItem.students.map((s, i) => [i + 1, s.student_number, s.last_name, s.first_name, s.grade_level || '—', s.section || '—']),
       theme: 'grid',
       headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
@@ -383,7 +384,7 @@ export default function TeacherClassesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                 <input
                   className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white"
-                  placeholder="Search by name or student number..."
+                  placeholder="Search by name or LRN..."
                   value={studentTc.search}
                   onChange={e => studentTc.setSearch(e.target.value)}
                 />
@@ -396,7 +397,7 @@ export default function TeacherClassesPage() {
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-gray-50">
                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10">#</th>
-                      <SortHeader label="Student No."  sortKey="student_number" currentSort={studentTc.sort} onSort={studentTc.toggleSort} />
+                      <SortHeader label="LRN"  sortKey="student_number" currentSort={studentTc.sort} onSort={studentTc.toggleSort} />
                       <SortHeader label="Name"         sortKey="last_name"      currentSort={studentTc.sort} onSort={studentTc.toggleSort} />
                       <SortHeader label="Grade"        sortKey="grade_level"    currentSort={studentTc.sort} onSort={studentTc.toggleSort} />
                       <SortHeader label="Section"      sortKey="section"        currentSort={studentTc.sort} onSort={studentTc.toggleSort} />

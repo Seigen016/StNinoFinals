@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { supabase } from "@/lib/supabaseClient"
+import { formatDate, formatDateTime } from "@/lib/format-date"
 import { useAlert } from "@/lib/use-alert"
 import { AlertTriangle, LogIn, LogOut, Radio, RefreshCcw, User } from "lucide-react"
 import Image from "next/image"
@@ -253,15 +254,6 @@ export default function RfidDisplayPage() {
       minute: "2-digit",
       second: "2-digit",
       hour12: true,
-    })
-  }
-
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString)
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
     })
   }
 
@@ -536,7 +528,7 @@ export default function RfidDisplayPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Time</span>
                   <span className="text-white">
-                    {new Date(securityAlert.occurredAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
+                    {formatDateTime(securityAlert.occurredAt)}
                   </span>
                 </div>
               </div>

@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { formatDate } from '@/lib/format-date';
 import { useAlert } from '@/lib/use-alert';
 import { useRefresh } from '@/lib/refresh-context';
 import jsPDF from 'jspdf';
@@ -160,11 +161,6 @@ export default function GradesPage() {
     ? (filteredGrades.reduce((s, g) => s + parseFloat(g.grade), 0) / filteredGrades.length).toFixed(1)
     : null;
 
-  const formatDate = (ds: string) => {
-    try { return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
-    catch { return ds; }
-  };
-
   const generateGradesCSV = useCallback(async () => {
     if (!student) return;
     if (filteredGrades.length === 0) {
@@ -175,7 +171,7 @@ export default function GradesPage() {
     const studentName = `${student.first_name || ''} ${(student as any).middle_name || ''} ${student.last_name || ''}`.trim() || displayName;
     const academicYear = selectedYear !== 'all' ? selectedYear : (enrollmentInfo?.academicYear || '');
     const quarterLabel = selectedQuarter !== 'all' ? `Quarter ${selectedQuarter}` : 'All Quarters';
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     const avg = filteredGrades.length > 0
       ? (filteredGrades.reduce((s, g) => s + parseFloat(g.grade), 0) / filteredGrades.length).toFixed(0)
       : 'N/A';
@@ -255,7 +251,7 @@ export default function GradesPage() {
       doc.setFontSize(10); doc.setFont('helvetica', 'italic');
       doc.text('This certification is issued upon the request of the aforementioned student', 105, finalY, { align: 'center' });
       doc.text('for EDUCATIONAL ASSISTANCE and for the stated purpose only.', 105, finalY + 6, { align: 'center' });
-      const dateStr = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+      const dateStr = formatDate(new Date());
       doc.setFont('helvetica', 'normal');
       doc.text(`Issued this ${dateStr} at SNDPA-LPH, Trece Martires City, Cavite.`, 105, finalY + 15, { align: 'center' });
       const signatureY = finalY + 35;

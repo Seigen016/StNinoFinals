@@ -305,7 +305,7 @@ export function StudentManagementTab({ students, loadingStudents, onStudentAdded
                 <Label htmlFor="search">Search</Label>
                 <Input
                   id="search"
-                  placeholder="Search by name or student ID..."
+                  placeholder="Search by name or LRN..."
                   value={studentFilters.search}
                   onChange={(e) => setStudentFilters({ ...studentFilters, search: e.target.value })}
                 />
@@ -446,7 +446,7 @@ export function StudentManagementTab({ students, loadingStudents, onStudentAdded
                   </p>
                 </div>
                 <div className="pb-3 border-b">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Student Number</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">LRN</h3>
                   <p className="text-base font-mono">{selectedStudent.student_number || 'N/A'}</p>
                 </div>
                 <div className="pb-3 border-b">

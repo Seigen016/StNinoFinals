@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { formatDate } from '@/lib/format-date';
 import { useRefresh } from '@/lib/refresh-context';
 import { supabase } from '@/lib/supabaseClient';
 import { useAlert } from '@/lib/use-alert';
@@ -54,6 +55,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { SHS_STRANDS } from '@/lib/school-year';
 import { ParentDashboard } from './components/ParentDashboard';
 
 interface Child {
@@ -280,7 +282,7 @@ export default function ParentDashboardPage() {
 
   const handleAddChild = async () => {
     if (!studentNumber.trim()) {
-      setAddError('Please enter a student number');
+      setAddError('Please enter the student LRN');
       return;
     }
 
@@ -627,10 +629,10 @@ export default function ParentDashboardPage() {
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
-                        <Label htmlFor="studentNumber">Student Number</Label>
+                        <Label htmlFor="studentNumber">LRN</Label>
                         <Input
                           id="studentNumber"
-                          placeholder="e.g., SNPA-2024-001"
+                          placeholder="12-digit LRN"
                           value={studentNumber}
                           onChange={(e) => setStudentNumber(e.target.value)}
                           disabled={isAddingChild}
@@ -735,11 +737,11 @@ export default function ParentDashboardPage() {
                   <div className="space-y-4 mt-4">
                     <div>
                       <Label htmlFor="studentNumberMobile">
-                        Student Number
+                        LRN
                       </Label>
                       <Input
                         id="studentNumberMobile"
-                        placeholder="e.g., SNPA-2024-001"
+                        placeholder="12-digit LRN"
                         value={studentNumber}
                         onChange={(e) => setStudentNumber(e.target.value)}
                         disabled={isAddingChild}
@@ -818,10 +820,10 @@ export default function ParentDashboardPage() {
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div>
-                    <Label htmlFor="studentNumber">Student Number</Label>
+                    <Label htmlFor="studentNumber">LRN</Label>
                     <Input
                       id="studentNumber"
-                      placeholder="e.g., SNPA-2024-001"
+                      placeholder="12-digit LRN"
                       value={studentNumber}
                       onChange={(e) => setStudentNumber(e.target.value)}
                       disabled={isAddingChild}
@@ -1051,14 +1053,7 @@ export default function ParentDashboardPage() {
                                 >
                                   <div>
                                     <p className="text-sm font-medium text-gray-800">
-                                      {new Date(
-                                        a.scan_time || a.date
-                                      ).toLocaleDateString('en-PH', {
-                                        weekday: 'short',
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                      })}
+                                      {formatDate(a.scan_time || a.date)}
                                     </p>
                                     <p className="text-xs text-gray-400">
                                       {a.scan_time
@@ -1295,15 +1290,7 @@ export default function ParentDashboardPage() {
                               <SelectValue placeholder="Select strand" />
                             </SelectTrigger>
                             <SelectContent>
-                              {[
-                                'STEM',
-                                'ABM',
-                                'HUMSS',
-                                'GAS',
-                                'TVL',
-                                'Sports',
-                                'Arts & Design',
-                              ].map((s) => (
+                              {SHS_STRANDS.map((s) => (
                                 <SelectItem key={s} value={s}>
                                   {s}
                                 </SelectItem>
@@ -1374,9 +1361,7 @@ export default function ParentDashboardPage() {
                                 </p>
                                 <p className="text-xs text-gray-400 mt-1">
                                   Submitted:{' '}
-                                  {new Date(
-                                    req.created_at
-                                  ).toLocaleDateString()}
+                                  {formatDate(req.created_at)}
                                 </p>
                               </div>
                               <Badge
@@ -1454,13 +1439,13 @@ export default function ParentDashboardPage() {
                         <div className="divide-y divide-gray-50">
                           {records.slice(0, 10).map((a: any, i: number) => {
                             const dt = new Date(a.scan_time || a.date);
-                            const dateStr = dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+                            const dateStr = formatDate(a.scan_time || a.date);
                             const timeStr = a.scan_time ? dt.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : '—';
                             const scanLabel = a.scan_type === 'timein' ? 'Time In' : a.scan_type === 'timeout' ? 'Time Out' : a.scan_type || '—';
                             return (
                               <div key={i} className="flex items-center justify-between px-4 py-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="text-xs text-gray-500 w-16 shrink-0">{dateStr}</div>
+                                  <div className="text-xs text-gray-500 w-32 shrink-0">{dateStr}</div>
                                   <div className="text-xs text-gray-700">{timeStr}</div>
                                   <div className="text-xs text-gray-400">{scanLabel}</div>
                                 </div>

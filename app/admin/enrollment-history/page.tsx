@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { Pagination } from '@/components/ui/data-table/Pagination';
 import { SortHeader } from '@/components/ui/data-table/SortHeader';
 import { useTableControls } from '@/hooks/use-table-controls';
@@ -147,7 +148,7 @@ export default function EnrollmentHistoryPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <SortHeader label="Student" sortKey="studentName" currentSort={tc.sort} onSort={tc.toggleSort} className="pl-4" />
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Student No.</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">LRN</th>
                   <SortHeader label="Class" sortKey="className" currentSort={tc.sort} onSort={tc.toggleSort} />
                   <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Grade / Section</th>
                   <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Archived</th>
@@ -161,7 +162,7 @@ export default function EnrollmentHistoryPage() {
                     <td className="px-4 py-3 text-[13px] text-gray-700 whitespace-nowrap">{row.className}</td>
                     <td className="px-4 py-3 text-[13px] text-gray-500 whitespace-nowrap">{row.gradeSection || <span className="text-gray-300">—</span>}</td>
                     <td className="px-4 py-3 text-[13px] text-gray-500 whitespace-nowrap">
-                      {new Date(row.archivedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      {formatDate(row.archivedAt)}
                     </td>
                   </tr>
                 )) : (

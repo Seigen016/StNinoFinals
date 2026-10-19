@@ -30,12 +30,13 @@ export async function POST() {
 
     const schoolYear = current.schoolYear;
 
-    // 1. Lock and deactivate Q4
+    // 1. Lock and deactivate every quarter of the year — the is_active flag may
+    //    sit on any quarter (dates drive the current one), and a leftover flag
+    //    keeps the closed year looking active.
     const { error: lockErr } = await supabase
       .from('academic_periods')
       .update({ is_active: false, is_grading_open: false })
-      .eq('school_year', schoolYear)
-      .eq('quarter', 4);
+      .eq('school_year', schoolYear);
 
     if (lockErr) {
       return NextResponse.json({ success: false, error: lockErr.message }, { status: 500 });

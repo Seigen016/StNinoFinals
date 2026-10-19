@@ -11,7 +11,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/format-date';
 import { ChevronDownIcon } from 'lucide-react';
 import * as React from 'react';
 
@@ -66,7 +66,7 @@ export function DatePickerTime() {
               id="date-picker-optional"
               className="w-32 justify-between font-normal"
             >
-              {date ? format(date, 'PPP') : 'Select date'}
+              {date ? formatDate(date) : 'Select date'}
               <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
             </Button>
           </PopoverTrigger>

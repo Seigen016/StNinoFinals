@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { format } from "date-fns"
+import { formatDate, formatDateRange } from "@/lib/format-date"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { ExportDropdown } from "@/components/ui/export-dropdown"
@@ -131,7 +132,7 @@ export default function ReportsPage() {
 
   const dateLabel =
     dateRange?.from && dateRange?.to
-      ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
+      ? formatDateRange(dateRange.from, dateRange.to)
       : "All Time"
 
   const gradeLabel = selectedGrade === "all" ? "All Grade Levels" : selectedGrade
@@ -145,7 +146,7 @@ export default function ReportsPage() {
 
   const gradeTotalCount   = gradeData.reduce((s, r) => s + r.count, 0)
   const sectionTotalCount = sectionData.reduce((s, r) => s + r.count, 0)
-  const generated = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
+  const generated = formatDate(new Date())
 
   /* ── PDF Export ─────────────────────────────────────────── */
   const handleExportPDF = () => {

@@ -148,7 +148,7 @@ export function getQuartersForSemester(semester: 1 | 2): [number, number] {
   return semester === 1 ? [1, 2] : [3, 4];
 }
 
-function isSeniorHigh(gradeLevel: string | null | undefined): boolean {
+export function isSeniorHigh(gradeLevel: string | null | undefined): boolean {
   return gradeLevel === 'Grade 11' || gradeLevel === 'Grade 12';
 }
 

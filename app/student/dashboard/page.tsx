@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { formatDate } from '@/lib/format-date';
 import { useRefresh } from '@/lib/refresh-context';
 import { parseScheduleSlots } from '@/lib/rooms';
 import {
@@ -505,13 +506,7 @@ export default function StudentDashboardPage() {
               </h2>
               {selectedAnnouncement.published_at && (
                 <p className="text-red-200/80 text-xs mt-2">
-                  {new Date(
-                    selectedAnnouncement.published_at
-                  ).toLocaleDateString('en-PH', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  {formatDate(selectedAnnouncement.published_at)}
                 </p>
               )}
             </div>

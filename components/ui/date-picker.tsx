@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { formatDate } from '@/lib/format-date';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import * as React from 'react';
 
@@ -65,7 +66,7 @@ export function DatePicker({
           className="w-full justify-between"
         >
           <span className="text-left truncate">
-            {selected ? format(selected, 'yyyy-MM-dd') : placeholder || 'Select date'}
+            {selected ? formatDate(value) : placeholder || 'Select date'}
           </span>
           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
         </Button>

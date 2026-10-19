@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { formatDate } from '@/lib/format-date';
 import { useRefresh } from '@/lib/refresh-context';
 import { supabase } from '@/lib/supabaseClient';
 import { useAlert } from '@/lib/use-alert';
@@ -699,18 +700,6 @@ const categoryColors: Record<string, string> = {
   other: 'bg-gray-200/50', // Semi-transparent gray
 };
 
-const formatDate = (isoDate: string) => {
-  if (!isoDate) return 'TBD';
-  try {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(new Date(isoDate));
-  } catch {
-    return isoDate;
-  }
-};
 
 const normalizePercentage = (value?: number | null) => {
   if (value === null || value === undefined || Number.isNaN(value)) return null;
@@ -1367,12 +1356,7 @@ export default function StudentDashboard() {
       );
 
       // Date and location
-      const currentDate = new Date();
-      const dateStr = currentDate.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
+      const dateStr = formatDate(new Date());
       doc.setFont('helvetica', 'normal');
       doc.text(
         `Issued this ${dateStr} at SNDPA-LPH, Trece Martires City, Cavite.`,
@@ -1535,11 +1519,7 @@ export default function StudentDashboard() {
 
       // Motto to the right of logo, date on the same line aligned right
       const currentDate = new Date();
-      const dateStr = currentDate.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      const dateStr = formatDate(currentDate);
 
       // Motto positioned to the right of logo (around x=50)
       doc.setFontSize(11);
@@ -2122,7 +2102,7 @@ export default function StudentDashboard() {
                               </p>
                               <p className="text-sm text-gray-500">
                                 {assignment.subject} · Due{' '}
-                                {formatDate(assignment.dueDate)}
+                                {formatDate(assignment.dueDate, 'TBD')}
                               </p>
                             </div>
                             <Badge
@@ -2507,7 +2487,7 @@ export default function StudentDashboard() {
                               {grade.subject}
                             </p>
                             <p className="text-sm text-gray-500">
-                              Updated {formatDate(grade.lastUpdated)}
+                              Updated {formatDate(grade.lastUpdated, 'TBD')}
                             </p>
                           </div>
                           <div className="text-xl font-semibold text-gray-900">

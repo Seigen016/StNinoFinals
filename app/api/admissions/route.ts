@@ -1,3 +1,4 @@
+import { birthDateError, NAME_FIELDS, nameCaseFields } from '@/lib/person';
 import { formatAddress, missingAddressFields, normalizeAddress } from '@/lib/address';
 import { Database } from '@/database.types';
 import { supabase } from '@/lib/supabaseClient';
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
 // POST - Create a new admission
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = nameCaseFields(await request.json(), NAME_FIELDS);
 
     // Validate required fields
     if (
@@ -66,6 +67,11 @@ export async function POST(request: Request) {
         },
         { status: 400 }
       );
+    }
+
+    const dobError = birthDateError(body.date_of_birth);
+    if (dobError) {
+      return NextResponse.json({ success: false, error: dobError }, { status: 400 });
     }
 
     // Both addresses are required, every part filled in
@@ -95,7 +101,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const ENROLLMENT_TYPES = ['new', 'returning', 'transferee', 'returnee', 'repeater'];
+    if (!/^\d{12}$/.test(body.lrn || '')) {
+      return NextResponse.json(
+        { success: false, error: 'Please enter the 12-digit LRN (Learner Reference Number).' },
+        { status: 400 }
+      );
+    }
+
+    const { data: lrnOwner } = await supabase
+      .from('users')
+      .select('id')
+      .or(`student_number.eq.${body.lrn},lrn.eq.${body.lrn}`)
+      .limit(1)
+      .maybeSingle();
+    if (lrnOwner) {
+      return NextResponse.json(
+        { success: false, error: 'This LRN is already registered. Please contact the school.' },
+        { status: 409 }
+      );
+    }
+
+    const ENROLLMENT_TYPES =['new', 'returning', 'transferee', 'returnee', 'repeater'];
     const enrollmentType = ENROLLMENT_TYPES.includes(body.enrollment_type)
       ? body.enrollment_type
       : 'new';

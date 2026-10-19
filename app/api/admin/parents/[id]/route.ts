@@ -1,3 +1,4 @@
+import { NAME_FIELDS, nameCaseFields } from '@/lib/person';
 import { normalizeGender } from '@/lib/gender'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -38,7 +39,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const body = nameCaseFields(await request.json(), NAME_FIELDS)
     const {
       first_name,
       last_name,

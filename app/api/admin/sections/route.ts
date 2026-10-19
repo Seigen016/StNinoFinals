@@ -18,6 +18,9 @@ export async function GET(request: NextRequest) {
 
   if (gradeLevel) query = query.eq('grade_level', gradeLevel);
   if (schoolYear) query = query.eq('school_year', schoolYear);
+  // SHS: only that strand's sections (plus sections with no strand set yet)
+  const strand = searchParams.get('strand');
+  if (strand) query = query.or(`strand.eq.${strand},strand.is.null`);
 
   const { data, error } = await query;
 

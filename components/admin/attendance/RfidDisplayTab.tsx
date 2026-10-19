@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import { supabase } from '@/lib/supabaseClient';
 import { useAlert } from '@/lib/use-alert';
 import { cn } from '@/lib/utils';
@@ -126,7 +127,6 @@ export function RfidDisplayTab() {
   }, []);
 
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   const enableTimeoutMode = async () => {
     try {
@@ -314,7 +314,7 @@ export function RfidDisplayTab() {
                 <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold mb-1">Scan Time</p>
                   <p className="text-2xl font-bold text-white font-mono">{fmtTime(latestScan.scanTime)}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{fmtDate(latestScan.scanTime)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{formatDate(latestScan.scanTime)}</p>
                 </div>
               </div>
             </div>
@@ -369,7 +369,7 @@ export function RfidDisplayTab() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Time</span>
                   <span className="text-white">
-                    {new Date(securityAlert.occurredAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
+                    {formatDateTime(securityAlert.occurredAt)}
                   </span>
                 </div>
               </div>

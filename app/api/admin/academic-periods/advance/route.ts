@@ -45,12 +45,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Deactivate the current period (and optionally lock grade entry).
+    // 3. Clear the is_active flag wherever it sits. `current` is date-computed and
+    //    may not be the flagged row (e.g. flag still on Q1 while dates say Q3), and
+    //    academic_periods_one_active allows only one flagged row.
+    const { data: flagged } = await supabase
+      .from('academic_periods')
+      .select('id')
+      .eq('is_active', true);
+
     const { error: deactivateErr } = await supabase
       .from('academic_periods')
-      .update({ is_active: false, is_grading_open: lockGrading ? false : current.isGradingOpen })
-      .eq('school_year', schoolYear)
-      .eq('quarter', current.quarter);
+      .update({ is_active: false })
+      .eq('is_active', true);
 
     if (deactivateErr) {
       return NextResponse.json({ success: false, error: deactivateErr.message }, { status: 500 });
@@ -64,17 +70,23 @@ export async function POST(request: NextRequest) {
       .eq('quarter', nextQuarter);
 
     if (activateErr) {
-      // Rollback: re-activate current period so we don't end up with no active period.
-      await supabase
-        .from('academic_periods')
-        .update({ is_active: true, is_grading_open: current.isGradingOpen })
-        .eq('school_year', schoolYear)
-        .eq('quarter', current.quarter);
-
+      // Rollback: restore the previously flagged row so one period stays active.
+      if (flagged?.[0]) {
+        await supabase.from('academic_periods').update({ is_active: true }).eq('id', flagged[0].id);
+      }
       return NextResponse.json({ success: false, error: activateErr.message }, { status: 500 });
     }
 
-    // 5. Mirror the new active period in system_settings for backward-compat reads.
+    // 5. Only now that the move succeeded, lock grade entry on the outgoing quarter.
+    if (lockGrading) {
+      await supabase
+        .from('academic_periods')
+        .update({ is_grading_open: false })
+        .eq('school_year', schoolYear)
+        .eq('quarter', current.quarter);
+    }
+
+    // 6. Mirror the new active period in system_settings for backward-compat reads.
     await syncSystemSettings(supabase, schoolYear, nextQuarter);
 
     return NextResponse.json({

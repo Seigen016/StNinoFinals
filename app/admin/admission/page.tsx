@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/data-table/Pagination';
 import { SortHeader } from '@/components/ui/data-table/SortHeader';
@@ -437,14 +438,7 @@ const AdmissionPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {new Date(admission.created_at).toLocaleDateString(
-                        'en-US',
-                        {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        }
-                      )}
+                      {formatDate(admission.created_at)}
                     </td>
                     <td className="px-4 py-3 pr-4 text-right">
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-md transition-colors cursor-pointer">
@@ -519,7 +513,7 @@ const AdmissionPage = () => {
                     selectedAdmission.parent_email ? { label: 'Guardian Email', value: selectedAdmission.parent_email, href: `mailto:${selectedAdmission.parent_email}`, compose: selectedAdmission.parent_email } : null,
                     { label: 'Applicant Email', value: selectedAdmission.email_address, href: `mailto:${selectedAdmission.email_address}` },
                     { label: "Guardian's Phone", value: selectedAdmission.guardian_phone || selectedAdmission.phone_number, href: `tel:${selectedAdmission.guardian_phone || selectedAdmission.phone_number}` },
-                    selectedAdmission.date_of_birth ? { label: 'Date of Birth', value: selectedAdmission.date_of_birth } : null,
+                    selectedAdmission.date_of_birth ? { label: 'Date of Birth', value: formatDate(selectedAdmission.date_of_birth) } : null,
                     (selectedAdmission as any).lrn ? { label: 'LRN', value: (selectedAdmission as any).lrn } : null,
                     ...((selectedAdmission as any).current_address
                       ? [
@@ -560,7 +554,7 @@ const AdmissionPage = () => {
                 )}
 
                 <p className="text-[11px] text-gray-400">
-                  Submitted {new Date(selectedAdmission.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  Submitted {formatDate(selectedAdmission.created_at)}
                 </p>
 
                 {/* Actions */}

@@ -188,7 +188,7 @@ export default function ClassListPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white"
-              placeholder="Search by name, student number, or email..."
+              placeholder="Search by name, LRN, or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -308,7 +308,7 @@ export default function ClassListPage() {
                                     <tr className="bg-gray-50">
                                       <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-12">#</th>
                                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Student Name</th>
-                                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Student No.</th>
+                                      <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">LRN</th>
                                       <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
                                     </tr>
                                   </thead>

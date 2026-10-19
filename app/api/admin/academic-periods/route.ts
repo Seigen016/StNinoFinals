@@ -1,5 +1,6 @@
 import { getActivePeriod, getPeriodsForYear } from '@/lib/academic-period';
 import { snapshotAndUnenrollStudents } from '@/lib/enrollment-history';
+import { getActiveSchoolYear } from '@/lib/school-year';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -16,7 +17,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!schoolYear) {
-      return NextResponse.json({ success: false, error: 'No active school year found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'No active school year found', nextSchoolYear: await getNextSchoolYear() },
+        { status: 404 }
+      );
     }
 
     const periods = await getPeriodsForYear(schoolYear);
@@ -29,13 +33,27 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// The year after the latest one on record ("2026-2027" → "2027-2028"); on a
+// fresh install, the current calendar school year.
+async function getNextSchoolYear(): Promise<string> {
+  const { data } = await getSupabaseAdmin()
+    .from('academic_periods')
+    .select('school_year')
+    .order('school_year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data?.school_year) return getActiveSchoolYear();
+  const start = Number(data.school_year.slice(0, 4)) + 1;
+  return `${start}-${start + 1}`;
+}
+
 // POST /api/admin/academic-periods
 // Creates all 4 quarters for a new school year with Q1 active.
-// Body: { schoolYear: "2026-2027" }
+// Body: { schoolYear?: "2026-2027" } — omitted = the year after the latest one
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { schoolYear } = body;
+    const body = await request.json().catch(() => ({}));
+    const schoolYear: string = body.schoolYear || (await getNextSchoolYear());
 
     if (!schoolYear || !/^\d{4}-\d{4}$/.test(schoolYear)) {
       return NextResponse.json(
@@ -69,7 +87,9 @@ export async function POST(request: NextRequest) {
       quarter:         q,
       label:           `Quarter ${q}`,
       is_active:       q === 1,
-      is_grading_open: q === 1,
+      // Quarters roll over by date with no admin click, so each starts open;
+      // admins lock a quarter manually from the Academic Period page.
+      is_grading_open: true,
       start_date:      null,
       end_date:        null,
     }));

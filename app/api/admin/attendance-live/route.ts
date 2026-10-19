@@ -1,6 +1,7 @@
 import { EmailService } from '@/lib/services/email-service';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { TextBeeService } from '@/services/textbee';
+import { formatDateTime } from '@/lib/format-date';
 import { NextResponse } from 'next/server';
 
 const timeoutModeExpiry = new Map<number, number>();
@@ -1334,19 +1335,7 @@ export async function POST(request: Request) {
 
             // Format date as "January 30, 2026, 10:00 AM" in Philippine time
             const scanDate = new Date(formattedRecord.scanTime || new Date());
-            const formattedDate = scanDate.toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              timeZone: 'Asia/Manila',
-            });
-            const formattedTime = scanDate.toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true,
-              timeZone: 'Asia/Manila',
-            });
-            const readableDateTime = `${formattedDate}, ${formattedTime}`;
+            const readableDateTime = formatDateTime(scanDate);
 
             const smsTemplate =
               process.env.SMS_ON_SCAN_TEMPLATE ||
@@ -1388,9 +1377,7 @@ export async function POST(request: Request) {
           const parentEmail = parentRecords[0]?.email;
           if (parentEmail) {
             try {
-              const readableTime = new Date().toLocaleString('en-PH', {
-                timeZone: 'Asia/Manila',
-              });
+              const readableTime = formatDateTime(new Date());
               await EmailService.sendAttendanceNotification({
                 parentEmail,
                 studentName: formattedRecord.studentName,

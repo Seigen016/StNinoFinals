@@ -42,6 +42,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { latestBirthYear } from '@/lib/person';
 import { useUser } from './context/user-context';
 
 export default function HomePage() {
@@ -195,6 +196,7 @@ export default function HomePage() {
   const handleAdmissionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const missing = [
+      ...(/^\d{12}$/.test(admissionForm.lrn) ? [] : ['LRN (12 digits)']),
       ...missingAddressFields(admissionForm.permanentAddress).map((f) => `Permanent ${f}`),
       ...(admissionForm.currentSameAsPermanent
         ? []
@@ -222,7 +224,7 @@ export default function HomePage() {
           current_address: admissionForm.currentSameAsPermanent
             ? admissionForm.permanentAddress
             : admissionForm.currentAddress,
-          lrn: admissionForm.lrn || null,
+          lrn: admissionForm.lrn,
           parent_name: admissionForm.parentName,
           parent_email: admissionForm.parentEmail || null,
           email_address: admissionForm.emailAddress,
@@ -1031,6 +1033,8 @@ export default function HomePage() {
                               })
                             }
                             required
+                            max={`${latestBirthYear()}-12-31`}
+                            title={`Applicants must be born in ${latestBirthYear()} or earlier`}
                             disabled={isSubmittingAdmission}
                             className="h-11 bg-white border-gray-200"
                           />
@@ -1039,11 +1043,9 @@ export default function HomePage() {
                           <Label
                             htmlFor="lrn"
                             className="text-sm font-medium text-gray-700"
+                            required
                           >
-                            LRN{' '}
-                            <span className="text-xs text-gray-400 font-normal">
-                              (if already assigned one)
-                            </span>
+                            LRN
                           </Label>
                           <Input
                             id="lrn"
@@ -1056,6 +1058,10 @@ export default function HomePage() {
                                 lrn: e.target.value.replace(/\D/g, ''),
                               })
                             }
+                            required
+                            minLength={12}
+                            pattern="\d{12}"
+                            title="12-digit LRN"
                             disabled={isSubmittingAdmission}
                             className="h-11 bg-white border-gray-200"
                           />

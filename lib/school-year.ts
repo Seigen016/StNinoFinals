@@ -52,3 +52,6 @@ export function normalizeSchoolYear(raw: string): string {
   }
   return raw;
 }
+
+/** Senior High School strands — enrollment forms and SHS sections use the same codes. */
+export const SHS_STRANDS = ['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'Sports', 'Arts & Design'];

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDateTime } from '@/lib/format-date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,9 +45,7 @@ export default function TestAttendanceNotifyPage() {
     if (!email.trim() && !phone.trim()) return;
 
     setSending(true);
-    const timestamp = new Date().toLocaleString('en-PH', {
-      timeZone: 'Asia/Manila',
-    });
+    const timestamp = formatDateTime(new Date());
 
     try {
       const res = await fetch('/api/admin/test-attendance-notify', {

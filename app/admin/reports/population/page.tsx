@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { Button } from '@/components/ui/button';
 import { SortHeader } from '@/components/ui/data-table/SortHeader';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
@@ -72,7 +73,7 @@ export default function PopulationReportPage() {
     const yearLabel = selectedYear !== 'all' ? `A.Y. ${selectedYear}` : 'All School Years';
     const gradeLabel = selectedGrade !== 'all' ? selectedGrade : 'All Grade Levels';
     doc.text(`${yearLabel}  |  ${gradeLabel}`, 105, 39, { align: 'center' });
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}`, 105, 44, { align: 'center' });
+    doc.text(`Generated: ${formatDate(new Date())}`, 105, 44, { align: 'center' });
 
     const tableBody = data.byGrade.map((row) => [row.grade_level, row.total]);
     tableBody.push(['Total', data.grandTotal] as any);
@@ -106,7 +107,7 @@ export default function PopulationReportPage() {
     const { downloadExcel } = await import('@/lib/export-excel');
     const yearLabel = selectedYear !== 'all' ? `A.Y. ${selectedYear}` : 'All School Years';
     const gradeLabel = selectedGrade !== 'all' ? selectedGrade : 'All Grade Levels';
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     const suffix = selectedYear !== 'all' ? `_${selectedYear.replace(/[^a-z0-9]/gi, '-')}` : '';
     await downloadExcel(`Enrollment_Report${suffix}`, {
       title: [

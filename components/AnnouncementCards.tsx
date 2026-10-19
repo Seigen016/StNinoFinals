@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell } from 'lucide-react';
+import { formatDate } from '@/lib/format-date';
 
 export interface AnnouncementItem {
   id: string | number;
@@ -18,15 +19,6 @@ interface AnnouncementCardsProps {
 }
 
 const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // posted within the last 3 days counts as "new"
-
-function formatDate(raw?: string) {
-  if (!raw) return '';
-  return new Date(raw).toLocaleDateString('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
 
 function isNew(raw?: string) {
   if (!raw) return false;
@@ -59,7 +51,7 @@ export function AnnouncementCards({ announcements, onSelect }: AnnouncementCards
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
         {sorted.map((a) => {
           const isUrgent = a.priority === 'high';
-          const dateStr = formatDate(a.published_at || a.date);
+          const dateStr = formatDate(a.published_at || a.date, '');
           const announcementIsNew = isNew(a.published_at || a.date);
 
           return (

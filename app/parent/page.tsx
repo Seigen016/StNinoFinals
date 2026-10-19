@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatDate } from '@/lib/format-date';
 import { supabase } from '@/lib/supabaseClient';
 import { useAlert } from '@/lib/use-alert';
 import { useConfirm } from '@/lib/use-confirm';
@@ -199,7 +200,7 @@ export default function ParentPortal() {
 
   const handleAddChild = async () => {
     if (!studentNumber.trim()) {
-      setAddError('Please enter a student number');
+      setAddError('Please enter the student LRN');
       return;
     }
 
@@ -341,10 +342,10 @@ export default function ParentPortal() {
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <div>
-                      <Label htmlFor="studentNumber">Student Number</Label>
+                      <Label htmlFor="studentNumber">LRN</Label>
                       <Input
                         id="studentNumber"
-                        placeholder="e.g., SNPA-2024-001"
+                        placeholder="12-digit LRN"
                         value={studentNumber}
                         onChange={(e) => setStudentNumber(e.target.value)}
                         disabled={isAddingChild}
@@ -601,7 +602,6 @@ export default function ParentPortal() {
                               Recent Records
                             </p>
                             {recent.map((r, i) => {
-                              const dt = new Date(r.date);
                               const status = (
                                 r.status || 'present'
                               ).toLowerCase();
@@ -611,10 +611,7 @@ export default function ParentPortal() {
                                   className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0"
                                 >
                                   <span className="text-gray-600">
-                                    {dt.toLocaleDateString('en-PH', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })}
+                                    {formatDate(r.date)}
                                     {r.time ? (
                                       <span className="text-gray-400 ml-1 text-xs">
                                         {r.time}

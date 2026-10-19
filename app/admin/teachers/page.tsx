@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { GenderCell } from '@/components/admin/gender-cell';
 import { AddressData, AddressSelector } from '@/components/ui/address-selector';
 import { Badge } from '@/components/ui/badge';
@@ -923,7 +924,7 @@ export default function TeacherManagementPage() {
                       Date of Birth
                     </h3>
                     <p className="text-base">
-                      {selectedTeacher.date_of_birth || 'N/A'}
+                      {formatDate(selectedTeacher.date_of_birth, 'N/A')}
                     </p>
                   </div>
                   <div className="pb-3 border-b">
@@ -931,7 +932,7 @@ export default function TeacherManagementPage() {
                       Date Hired
                     </h3>
                     <p className="text-base">
-                      {selectedTeacher.date_hired || 'N/A'}
+                      {formatDate(selectedTeacher.date_hired, 'N/A')}
                     </p>
                   </div>
                   <div className="pb-3 border-b">

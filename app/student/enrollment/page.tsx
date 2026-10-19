@@ -28,8 +28,9 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyError } from '@/lib/error-message';
+import { formatDate } from '@/lib/format-date';
 import { parseScheduleSlots } from '@/lib/rooms';
-import { getEnrollmentSchoolYear } from '@/lib/school-year';
+import { getEnrollmentSchoolYear, SHS_STRANDS } from '@/lib/school-year';
 import { supabase } from '@/lib/supabaseClient';
 import { useRefresh } from '@/lib/refresh-context';
 import { useAlert } from '@/lib/use-alert';
@@ -70,15 +71,6 @@ const GRADE_LEVELS = [
   'Grade 12',
 ];
 
-const SHS_STRANDS = [
-  'STEM',
-  'ABM',
-  'HUMSS',
-  'GAS',
-  'TVL',
-  'Sports',
-  'Arts & Design',
-];
 
 interface StudentInfo {
   name: string;
@@ -208,45 +200,48 @@ export default function EnrollmentPage() {
     const lastGradeNum = parseInt(String(lastApproved.grade_level).replace(/\D/g, ''));
     if (!lastGradeNum) return null;
 
-    const nextGradeNum = Math.min(lastGradeNum + 1, 12);
+    // A new school year moves up one grade; re-enrolling within the same
+    // school year keeps the grade.
+    const activeSY = enrollmentData?.enrollment?.schoolYear;
+    const sameYear = !!activeSY && lastApproved.school_year === activeSY;
+    const nextGradeNum = sameYear ? lastGradeNum : Math.min(lastGradeNum + 1, 12);
     return {
       lastGrade: `Grade ${lastGradeNum}`,
       nextGrade: `Grade ${nextGradeNum}`,
+      strand: lastApproved.strand,
       isReturning: true,
     };
-  }, [enrollmentHistory]);
+  }, [enrollmentHistory, enrollmentData]);
 
-  // Auto-fill grade + strand once after data loads.
-  // Priority: admission.intended_grade_level > enrollment history > student.grade_level
-  // NOTE: admission always overrides — no ref guard — because student loads from
-  // localStorage before the admission API fetch completes, and the ref would
-  // block the admission fill if the weaker fallback ran first.
+  // Auto-fill grade + strand once, after all data has loaded.
+  // Priority: returning student's next grade (from approved history) >
+  // admission.intended_grade_level (new students) > student.grade_level.
+  // The admission grade is from when they first applied, so it must not
+  // override a returning student's next grade.
   useEffect(() => {
-    if (admissionData?.intendedGradeLevel) {
+    if (dataLoading || autoFilledRef.current) return;
+
+    let gl: string | null = null;
+    if (suggestedGrade) {
+      gl = suggestedGrade.nextGrade;
+    } else if (admissionData?.intendedGradeLevel) {
       // Normalize admission format: "grade6" → "Grade 6", "Grade 6" → "Grade 6"
-      let gl = String(admissionData.intendedGradeLevel).trim();
-      if (/^grade\d+$/i.test(gl)) {
-        gl = `Grade ${gl.replace(/^grade/i, '')}`;
-      }
-      if (GRADE_LEVELS.includes(gl)) {
-        setGradeLevel(gl);
-        autoFilledRef.current = true;
-      }
-    } else if (!autoFilledRef.current) {
-      // Fallbacks run only once (weaker sources shouldn't keep overriding user edits)
-      if (suggestedGrade) {
-        setGradeLevel(suggestedGrade.nextGrade);
-        autoFilledRef.current = true;
-      } else if (student?.grade_level) {
-        const gl = String(student.grade_level).trim();
-        const normalized = gl.startsWith('Grade ') ? gl : `Grade ${gl}`;
-        if (GRADE_LEVELS.includes(normalized)) {
-          setGradeLevel(normalized);
-          autoFilledRef.current = true;
-        }
+      gl = String(admissionData.intendedGradeLevel).trim();
+      if (/^grade\d+$/i.test(gl)) gl = `Grade ${gl.replace(/^grade/i, '')}`;
+    } else if (student?.grade_level) {
+      const raw = String(student.grade_level).trim();
+      gl = raw.startsWith('Grade ') ? raw : `Grade ${raw}`;
+    }
+
+    if (gl && GRADE_LEVELS.includes(gl)) {
+      setGradeLevel(gl);
+      // Grade 11 → 12 keeps the strand
+      if ((gl === 'Grade 11' || gl === 'Grade 12') && suggestedGrade?.strand) {
+        setStrand(suggestedGrade.strand);
       }
     }
-  }, [admissionData, suggestedGrade, student?.grade_level]); // eslint-disable-line react-hooks/exhaustive-deps
+    autoFilledRef.current = true;
+  }, [dataLoading, admissionData, suggestedGrade, student?.grade_level]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchData = useCallback(async () => {
     if (!student) return;
@@ -729,7 +724,7 @@ export default function EnrollmentPage() {
     }
     const { downloadExcel } = await import('@/lib/export-excel');
     const studentName = info?.name || displayName;
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     await downloadExcel(`Enrollment_History_${studentName.replace(/\s+/g, '_')}`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
@@ -740,7 +735,7 @@ export default function EnrollmentPage() {
       columns: ['Date Applied', 'Grade Level', 'School Year', 'Status'],
       colWidths: [22, 18, 22, 16],
       rows: enrollmentHistory.map((req) => [
-        new Date(req.created_at).toLocaleDateString('en-PH'),
+        formatDate(req.created_at),
         req.grade_level,
         req.school_year,
         req.status.toUpperCase(),
@@ -789,7 +784,7 @@ export default function EnrollmentPage() {
           doc.addPage();
           yPos = 20;
         }
-        const dateStr = new Date(req.created_at).toLocaleDateString();
+        const dateStr = formatDate(req.created_at);
         doc.text(dateStr, 20, yPos);
         doc.text(req.grade_level, 60, yPos);
         doc.text(req.school_year, 100, yPos);
@@ -918,7 +913,7 @@ export default function EnrollmentPage() {
               />
               <InfoCard
                 icon={Hash}
-                label="Student Number"
+                label="LRN"
                 value={info?.studentNumber}
               />
               <InfoCard
@@ -1192,14 +1187,7 @@ export default function EnrollmentPage() {
                 label="Submitted On"
                 value={
                   enrollmentRequest?.created_at
-                    ? new Date(enrollmentRequest.created_at).toLocaleDateString(
-                        'en-US',
-                        {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        }
-                      )
+                    ? formatDate(enrollmentRequest.created_at)
                     : null
                 }
               />
@@ -1283,10 +1271,7 @@ export default function EnrollmentPage() {
                 label="Submitted On"
                 value={
                   enrollmentRequest?.created_at
-                    ? new Date(enrollmentRequest.created_at).toLocaleDateString(
-                        'en-US',
-                        { year: 'numeric', month: 'long', day: 'numeric' }
-                      )
+                    ? formatDate(enrollmentRequest.created_at)
                     : null
                 }
               />

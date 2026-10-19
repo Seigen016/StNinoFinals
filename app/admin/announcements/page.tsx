@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/data-table/Pagination';
 import { SortHeader } from '@/components/ui/data-table/SortHeader';
@@ -477,14 +478,14 @@ export default function AdminAnnouncementsPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {a.published_at ? (
-                        new Date(a.published_at).toLocaleDateString('en-PH')
+                        formatDate(a.published_at)
                       ) : (
                         <span className="text-gray-300">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {a.expires_at ? (
-                        new Date(a.expires_at).toLocaleDateString('en-PH')
+                        formatDate(a.expires_at)
                       ) : (
                         <span className="text-gray-300">—</span>
                       )}

@@ -1,5 +1,6 @@
 import { EmailService } from '@/lib/services/email-service';
 import { TextBeeService } from '@/services/textbee';
+import { formatDateTime } from '@/lib/format-date';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const grade = gradeLevel || 'Grade 7';
     const sec = section || 'Section A';
     const type: 'timein' | 'timeout' = scanType === 'timeout' ? 'timeout' : 'timein';
-    const scanTime = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+    const scanTime = formatDateTime(new Date());
 
     const results: { email?: string; sms?: string } = {};
 

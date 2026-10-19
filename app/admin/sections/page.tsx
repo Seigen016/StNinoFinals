@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRefresh } from '@/lib/refresh-context';
+import { SHS_STRANDS } from '@/lib/school-year';
 import { useAlert } from '@/lib/use-alert';
 import { Archive, ArchiveRestore, Loader2, Plus, Save, Trash2, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -511,6 +512,7 @@ interface SectionRow {
   name: string;
   grade_level: string;
   school_year: string;
+  strand?: string | null;
   max_capacity: number;
   student_count: number;
   class_count: number;
@@ -531,6 +533,8 @@ function FormalSectionsPanel() {
   const [addGrade, setAddGrade] = useState('');
   const [addName, setAddName] = useState('');
   const [addCapacity, setAddCapacity] = useState('45');
+  const [addStrand, setAddStrand] = useState('');
+  const addIsSHS = addGrade === 'Grade 11' || addGrade === 'Grade 12';
   const [adding, setAdding] = useState(false);
 
   const { showAlert } = useAlert();
@@ -635,7 +639,7 @@ function FormalSectionsPanel() {
   };
 
   const handleAdd = async () => {
-    if (!addGrade || !addName.trim() || !schoolYear) return;
+    if (!addGrade || !addName.trim() || !schoolYear || (addIsSHS && !addStrand)) return;
     setAdding(true);
     try {
       const res = await fetch('/api/admin/sections', {
@@ -644,6 +648,7 @@ function FormalSectionsPanel() {
         body: JSON.stringify({
           name: addName.trim(),
           gradeLevel: addGrade,
+          strand: addIsSHS ? addStrand : null,
           schoolYear,
           maxCapacity: parseInt(addCapacity) || 45,
         }),
@@ -765,6 +770,20 @@ function FormalSectionsPanel() {
               ))}
             </SelectContent>
           </Select>
+          {addIsSHS && (
+            <Select value={addStrand} onValueChange={setAddStrand}>
+              <SelectTrigger className="w-full sm:w-40 h-8 text-sm">
+                <SelectValue placeholder="Strand" />
+              </SelectTrigger>
+              <SelectContent>
+                {SHS_STRANDS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <input
             className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white"
             placeholder="Section name"
@@ -783,7 +802,7 @@ function FormalSectionsPanel() {
           <Button
             size="sm"
             onClick={handleAdd}
-            disabled={adding || !addGrade || !addName.trim()}
+            disabled={adding || !addGrade || !addName.trim() || (addIsSHS && !addStrand)}
             className="bg-primary hover:bg-primary/90 text-white shrink-0"
           >
             {adding ? (
@@ -848,6 +867,11 @@ function FormalSectionsPanel() {
                     </td>
                     <td className="px-4 py-2.5 text-sm text-gray-800">
                       {sec.name}
+                      {sec.strand && (
+                        <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">
+                          {sec.strand}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-center text-sm tabular-nums">
                       <span

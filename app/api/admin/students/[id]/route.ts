@@ -1,3 +1,4 @@
+import { birthDateError, NAME_FIELDS, nameCaseFields } from '@/lib/person';
 import { normalizeGender } from '@/lib/gender'
 import { findRfidOwner } from '@/lib/rfid';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
@@ -39,7 +40,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const body = nameCaseFields(await request.json(), NAME_FIELDS)
     const {
       first_name,
       last_name,
@@ -64,18 +65,31 @@ export async function PUT(
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    // Check student_number uniqueness if it's being changed
+    const dobError = birthDateError(date_of_birth)
+    if (dobError) {
+      return NextResponse.json({ success: false, error: dobError }, { status: 400 })
+    }
+
+    // The student number IS the LRN; check format and uniqueness if it's being changed
     if (student_number !== undefined) {
+      if (!/^\d{12}$/.test(student_number)) {
+        return NextResponse.json(
+          { success: false, error: 'LRN must be exactly 12 digits.' },
+          { status: 400 }
+        )
+      }
+
       const { data: existing } = await supabaseAdmin
         .from('users')
         .select('id')
-        .eq('student_number', student_number)
+        .or(`student_number.eq.${student_number},lrn.eq.${student_number}`)
         .neq('id', id)
+        .limit(1)
         .maybeSingle()
 
       if (existing) {
         return NextResponse.json(
-          { success: false, error: 'Student number is already in use by another student.' },
+          { success: false, error: 'This LRN is already used by another student.' },
           { status: 409 }
         )
       }
@@ -98,8 +112,10 @@ export async function PUT(
     if (last_name !== undefined) updateData.last_name = last_name
     if (middle_name !== undefined) updateData.middle_name = middle_name || null
     if (suffix !== undefined) updateData.suffix = suffix || null
-    if (student_number !== undefined) updateData.student_number = student_number || null
-    if (lrn !== undefined) updateData.lrn = lrn || null
+    if (student_number !== undefined) {
+      updateData.student_number = student_number
+      updateData.lrn = student_number
+    }
     if (grade_level !== undefined) updateData.grade_level = grade_level
     if (section !== undefined) updateData.section = section || null
     if (email !== undefined) updateData.email = email

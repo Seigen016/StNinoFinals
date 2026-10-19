@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, CheckCircle, Clock, FileText, TrendingUp, Users } from "lucide-react"
+import { formatDate } from "@/lib/format-date"
 
 interface TeacherDashboardProps {
   stats: {
@@ -47,7 +48,7 @@ export function TeacherDashboard({ stats, todaySchedule, recentActivity }: Teach
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
+    return formatDate(date)
   }
 
   return (

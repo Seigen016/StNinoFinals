@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { SchoolYearTabs } from '@/components/admin/school-year-tabs';
 import { normalizeSchoolYear } from '@/lib/school-year';
 import { friendlyError } from '@/lib/error-message';
@@ -196,6 +197,7 @@ export default function AdminEnrollmentPage() {
     setSectionsFetching(true);
     try {
       const params = new URLSearchParams({ gradeLevel: req.grade_level, schoolYear: req.school_year });
+      if (req.strand) params.set('strand', req.strand);
       const res = await fetch(`/api/admin/sections?${params}`);
       const payload = await res.json().catch(() => ({}));
       if (res.ok && payload?.success) {
@@ -477,11 +479,7 @@ export default function AdminEnrollmentPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">{req.school_year}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {new Date(req.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                      {formatDate(req.created_at)}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5">
@@ -589,6 +587,7 @@ export default function AdminEnrollmentPage() {
                     </div>
                   ) : sectionsFromDB.length > 0 ? (
                     // Primary: sections from the formal sections table
+                    <>
                     <Select value={assignedSectionId} onValueChange={setAssignedSectionId}>
                       <SelectTrigger id="sectionAssign">
                         <SelectValue placeholder="Select a section…" />
@@ -606,6 +605,17 @@ export default function AdminEnrollmentPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {/* Pre-filled server-side from the student's earlier approved request this school year */}
+                    {selectedRequest.assigned_section_id &&
+                      assignedSectionId === selectedRequest.assigned_section_id && (
+                        <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+                          Auto-filled from the student&apos;s previous enrollment this school year. Please verify before approving.
+                        </p>
+                      )}
+                    {selectedRequest.strand && (
+                      <p className="text-xs text-gray-500">Showing {selectedRequest.strand} sections only.</p>
+                    )}
+                    </>
                   ) : availableSections.length > 0 ? (
                     // Fallback: derive from class text fields (pre-migration compat)
                     <>

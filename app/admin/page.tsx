@@ -144,7 +144,7 @@ export default function AdminPage() {
     w.document.write(`<html><head><title>${selectedGradeLevel}</title>
       <style>body{font-family:Arial,sans-serif;padding:20px}table{border-collapse:collapse;width:100%}th,td{padding:8px 12px;border:1px solid #e5e7eb;text-align:left}th{background:#991b1b;color:white}</style>
       </head><body><h2>Sto. Niño de Praga Academy</h2><h3>${selectedGradeLevel} — ${gradeStudents.length} students</h3>
-      <table><thead><tr><th>#</th><th>Name</th><th>Student No.</th><th>Section</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+      <table><thead><tr><th>#</th><th>Name</th><th>LRN</th><th>Section</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
     w.document.close();
     w.print();
   };

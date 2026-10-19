@@ -194,6 +194,8 @@ export async function POST(request: Request) {
           guardian_email: admission.parent_email || null,
           suffix: admission.suffix || null,
           lrn: (admission as any).lrn || null,
+          // The student number IS the LRN (older admissions may have none)
+          student_number: (admission as any).lrn || null,
           // New applications carry both addresses; older ones a single typed address
           ...(admission.permanent_street
             ? {

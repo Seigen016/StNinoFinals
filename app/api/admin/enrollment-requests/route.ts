@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest) {
     const { data: enrollmentRequest, error: fetchError } = await supabase
       .from('enrollment_requests')
       .select(
-        'id, student_id, grade_level, school_year, assigned_class_id, student:users!enrollment_requests_student_id_fkey(first_name, last_name, email)'
+        'id, student_id, grade_level, strand, school_year, assigned_class_id, student:users!enrollment_requests_student_id_fkey(first_name, last_name, email)'
       )
       .eq('id', requestId)
       .single();
@@ -85,6 +85,23 @@ export async function PATCH(request: NextRequest) {
         { success: false, error: 'That enrollment request no longer exists. Please refresh the list.' },
         { status: 404 }
       );
+    }
+
+    // SHS: the section must belong to the strand the student enrolled in.
+    // Checked before anything is saved so a mismatch leaves the request pending.
+    const requestStrand = (enrollmentRequest as any).strand as string | null;
+    if (status === 'approved' && sectionId && requestStrand) {
+      const { data: target } = await supabase
+        .from('sections')
+        .select('name, strand')
+        .eq('id', sectionId)
+        .maybeSingle();
+      if (target?.strand && target.strand !== requestStrand) {
+        return NextResponse.json(
+          { success: false, error: `${target.name} is a ${target.strand} section, but this student enrolled in ${requestStrand}. Please pick a ${requestStrand} section.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Build the update payload

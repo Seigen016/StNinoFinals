@@ -1,6 +1,7 @@
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import path from 'path';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 
 // ─── Transport ─────────────────────────────────────────────────────────────────
 
@@ -19,14 +20,6 @@ function createTransporter() {
 
 function getLogoPath(): string {
   return path.join(process.cwd(), 'public', 'logo.png');
-}
-
-function formatDate(): string {
-  return new Date().toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
@@ -145,7 +138,7 @@ function emailShell(bodyHtml: string): string {
             <td style="color:#8a8a9e;font-family:'Courier New',Courier,monospace;
                        font-size:11px;letter-spacing:0.8px;text-transform:uppercase;
                        border-bottom:1px solid #e2ddd6;padding-bottom:14px;">
-              ${formatDate()}
+              ${formatDate(new Date())}
             </td>
           </tr>
         </table>
@@ -425,6 +418,8 @@ function closing(
 
 interface EmailOptions {
   to: string;
+  /** Hidden copy, e.g. GRADE_EMAIL_BCC for monitoring teacher grade emails */
+  bcc?: string;
   subject: string;
   text: string;
   html?: string;
@@ -516,6 +511,7 @@ export class EmailService {
       const response = await transporter.sendMail({
         from: `"Sto. Niño de Praga Academy" <${process.env.SMTP_EMAIL}>`,
         to: options.to,
+        bcc: options.bcc,
         subject: options.subject,
         text: options.text,
         html: options.html,
@@ -754,6 +750,7 @@ export class EmailService {
 
     await this.sendEmail({
       to: data.to,
+      bcc: process.env.GRADE_EMAIL_BCC || undefined,
       subject: 'Sto. Niño de Praga Academy — Grade Submission Rejected',
       text,
       html,
@@ -786,6 +783,7 @@ export class EmailService {
 
     await this.sendEmail({
       to: data.to,
+      bcc: process.env.GRADE_EMAIL_BCC || undefined,
       subject: 'Sto. Niño de Praga Academy — Grade Submission Approved',
       text,
       html,
@@ -839,7 +837,7 @@ export class EmailService {
   // ── SMTP Test Email ──────────────────────────────────────────────────────────
 
   static async sendTestEmail(to: string): Promise<void> {
-    const now = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+    const now = formatDateTime(new Date());
 
     const html = emailShell(`
       ${sectionTitle('SMTP Configuration Test')}

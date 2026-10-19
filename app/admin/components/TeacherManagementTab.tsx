@@ -1,5 +1,6 @@
 "use client"
 
+import { formatDate } from "@/lib/format-date"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -475,14 +476,7 @@ export function TeacherManagementTab({ teachers, loadingTeachers, onTeacherAdded
                 <div className="pb-3 border-b">
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Date Hired</h3>
                   <p className="text-base">
-                    {selectedTeacher.date_hired 
-                      ? new Date(selectedTeacher.date_hired).toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })
-                      : 'N/A'
-                    }
+                    {formatDate(selectedTeacher.date_hired, 'N/A')}
                   </p>
                 </div>
                 <div className="pb-3 border-b">

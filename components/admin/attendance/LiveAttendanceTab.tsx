@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { formatDate, formatDateRange } from '@/lib/format-date';
 import { CalendarIcon, Clock, Radio, Users } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import Image from 'next/image';
@@ -142,14 +143,6 @@ export function LiveAttendanceTab() {
       second: '2-digit',
     });
 
-  const formatFullDate = (ts: string) =>
-    new Date(ts).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-full">
       {/* ── Scan List ─────────────────────────────────────────── */}
@@ -168,9 +161,7 @@ export function LiveAttendanceTab() {
                 <button className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-300 hover:border-red-700 rounded-lg transition-colors">
                   <CalendarIcon className="w-3 h-3" />
                   {range?.from
-                    ? range.to && range.to.getTime() !== range.from.getTime()
-                      ? `${format(range.from, 'MMM d')} – ${format(range.to, 'MMM d, yyyy')}`
-                      : format(range.from, 'MMM d, yyyy')
+                    ? formatDateRange(range.from, range.to)
                     : 'Latest'}
                 </button>
               </PopoverTrigger>
@@ -284,7 +275,7 @@ export function LiveAttendanceTab() {
                       </span>
                     )}
                     <span className="text-[10px] text-gray-500 font-medium">
-                      {new Date(rec.scanTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {formatTime(rec.scanTime)}
+                      {formatDate(rec.scanTime)} · {formatTime(rec.scanTime)}
                     </span>
                   </div>
                 </button>
@@ -350,7 +341,7 @@ export function LiveAttendanceTab() {
                     <p className="text-sm text-gray-400 mt-0.5">
                       {spotlight.role === 'teacher'
                         ? 'Employee No.'
-                        : 'Student ID'}
+                        : 'LRN'}
                       : {spotlight.studentId}
                     </p>
                   </div>
@@ -391,7 +382,7 @@ export function LiveAttendanceTab() {
                       {formatTime(spotlight.scanTime)}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {formatFullDate(spotlight.scanTime)}
+                      {formatDate(spotlight.scanTime)}
                     </p>
                     <div className="mt-3 pt-3 border-t border-red-100 flex items-center justify-between">
                       {spotlight.scanType &&

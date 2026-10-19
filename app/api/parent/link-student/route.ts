@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     if (!parent_id || !student_number) {
       return NextResponse.json(
-        { success: false, error: 'Parent ID and Student Number are required' },
+        { success: false, error: 'Parent ID and LRN are required' },
         { status: 400 }
       )
     }
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     if (studentError || !student) {
       return NextResponse.json(
-        { success: false, error: 'Student not found with this student number' },
+        { success: false, error: 'No student found with this LRN' },
         { status: 404 }
       )
     }

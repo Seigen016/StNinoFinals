@@ -16,6 +16,7 @@ import autoTable from 'jspdf-autotable';
 import { Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { formatDate } from '@/lib/format-date';
 import {
   Bar,
   BarChart,
@@ -119,7 +120,7 @@ export default function TeacherReportsPage() {
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     doc.text(`Teacher: ${teacherName}`, 105, 38, { align: 'center' });
     doc.text(
-      `${selectedYear !== 'all' ? `A.Y. ${selectedYear}` : 'All School Years'}  |  Generated: ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      `${selectedYear !== 'all' ? `A.Y. ${selectedYear}` : 'All School Years'}  |  Generated: ${formatDate(new Date())}`,
       105, 43, { align: 'center' }
     );
 
@@ -179,7 +180,7 @@ export default function TeacherReportsPage() {
   const handleDownloadExcel = async () => {
     if (filtered.length === 0) return;
     const { downloadExcel } = await import('@/lib/export-excel');
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     await downloadExcel(`Enrollment_Report_${teacherName.replace(/\s+/g, '_')}_${selectedYear !== 'all' ? selectedYear : 'All'}`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',

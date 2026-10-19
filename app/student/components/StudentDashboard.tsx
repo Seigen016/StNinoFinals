@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { formatDate } from "@/lib/format-date"
 import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock, TrendingUp } from "lucide-react"
 
 interface StudentDashboardProps {
@@ -33,10 +34,6 @@ interface StudentDashboardProps {
 }
 
 export function StudentDashboard({ stats, assignments, courseProgress, grades }: StudentDashboardProps) {
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
   const getDaysUntil = (date: string) => {
     const days = Math.ceil((new Date(date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     return days

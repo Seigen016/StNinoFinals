@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDateTime } from '@/lib/format-date';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle, MessageSquare, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
@@ -29,7 +30,7 @@ export default function TestSmsPage() {
   const handleSend = async () => {
     if (!phone.trim() || !message.trim()) return;
     setSending(true);
-    const timestamp = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+    const timestamp = formatDateTime(new Date());
     try {
       const res = await fetch('/api/admin/test-sms', {
         method: 'POST',

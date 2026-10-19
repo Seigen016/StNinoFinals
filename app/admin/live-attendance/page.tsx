@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -173,16 +174,6 @@ export default function LiveAttendancePage() {
     });
   };
 
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   const handleClose = () => {
     if (window.opener) {
       window.close();
@@ -299,12 +290,7 @@ export default function LiveAttendancePage() {
                                     {formatTime(record.scanTime)}
                                   </span>
                                   <span className="text-[10px] text-gray-400">
-                                    {new Date(
-                                      record.scanTime
-                                    ).toLocaleDateString('en-PH', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })}
+                                    {formatDate(record.scanTime)}
                                   </span>
                                 </div>
                               </div>
@@ -323,7 +309,7 @@ export default function LiveAttendancePage() {
                                   <p className="text-xs text-gray-500">
                                     {record.role === 'teacher'
                                       ? 'Employee Number'
-                                      : 'Student ID'}
+                                      : 'LRN'}
                                     : {record.studentId}
                                   </p>
                                 </div>
@@ -425,7 +411,7 @@ export default function LiveAttendancePage() {
                         <p className="text-sm text-gray-600">
                           {latestRecord.role === 'teacher'
                             ? 'Employee Number'
-                            : 'Student ID'}
+                            : 'LRN'}
                           : {latestRecord.studentId}
                         </p>
                       </div>
@@ -560,10 +546,7 @@ export default function LiveAttendancePage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 font-medium">Timestamp</span>
                   <span className="text-gray-800">
-                    {new Date(securityAlert.occurredAt).toLocaleString(
-                      'en-PH',
-                      { timeZone: 'Asia/Manila' }
-                    )}
+                    {formatDateTime(securityAlert.occurredAt)}
                   </span>
                 </div>
                 {securityAlert.deviceId && (

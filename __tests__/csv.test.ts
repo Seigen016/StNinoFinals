@@ -21,6 +21,10 @@ describe('findGradeColumns', () => {
     ].join('\n');
     expect(findGradeColumns(parseCsv(csv))).toEqual({ start: 5, numberCol: 0, gradeCol: 2 });
   });
+
+  it('reads an LRN header (exports since student number became LRN)', () => {
+    expect(findGradeColumns(parseCsv('Student Name,LRN,Grade\nJuan,123456789012,90'))).toEqual({ start: 1, numberCol: 1, gradeCol: 2 });
+  });
 });
 
 describe('rowsFromXlsx', () => {

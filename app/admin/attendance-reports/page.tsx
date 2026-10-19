@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate, formatDateRange } from '@/lib/format-date';
 import { Button } from '@/components/ui/button';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { Input } from '@/components/ui/input';
@@ -190,14 +191,14 @@ export default function AttendanceReportsPage() {
   const exportToExcel = async () => {
     if (!data || !data.students.length) return;
     const { downloadExcel } = await import('@/lib/export-excel');
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     const fromStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
     const toStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end';
     await downloadExcel(`attendance-${fromStr}-to-${toStr}`, {
       title: [
         'STO. NIÑO DE PRAGA ACADEMY OF LA PAZ HOMES II, INC.',
         'STUDENT ATTENDANCE REPORT',
-        `Period: ${fromStr} to ${toStr}`,
+        `Period: ${formatDateRange(dateRange?.from, dateRange?.to)}`,
         `Generated: ${generated}`,
       ],
       columns: ['#', 'Name', 'Grade', 'Section', 'Total Days', 'Time In', 'Absent', 'Late', 'Excused', '%',
@@ -215,7 +216,7 @@ export default function AttendanceReportsPage() {
   const exportToPDF = () => {
     if (!data || !data.students.length) return;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const generated = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const generated = formatDate(new Date());
     const fromStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
     const toStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end';
 
@@ -224,7 +225,7 @@ export default function AttendanceReportsPage() {
     doc.setFontSize(11);
     doc.text('STUDENT ATTENDANCE REPORT', 148.5, 21, { align: 'center' });
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text(`Period: ${fromStr} to ${toStr}`, 148.5, 27, { align: 'center' });
+    doc.text(`Period: ${formatDateRange(dateRange?.from, dateRange?.to)}`, 148.5, 27, { align: 'center' });
     doc.text(`Generated: ${generated}`, 148.5, 32, { align: 'center' });
 
     autoTable(doc, {
@@ -272,7 +273,7 @@ export default function AttendanceReportsPage() {
               {data && (
                 <p className="text-[11px] text-gray-400 truncate leading-none mt-0.5">
                   {dateRange?.from && dateRange?.to &&
-                    `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`}
+                    formatDateRange(dateRange.from, dateRange.to)}
                   {data.general.totalStudents > 0 && ` · ${data.general.totalStudents} students`}
                 </p>
               )}
@@ -359,9 +360,7 @@ export default function AttendanceReportsPage() {
               >
                 <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
                 {dateRange?.from
-                  ? dateRange.to
-                    ? `${format(dateRange.from, 'MMM d')} – ${format(dateRange.to, 'MMM d, yyyy')}`
-                    : format(dateRange.from, 'MMM d, yyyy')
+                  ? formatDateRange(dateRange.from, dateRange.to)
                   : 'Select date range'}
               </button>
             </PopoverTrigger>

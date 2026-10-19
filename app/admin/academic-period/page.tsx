@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate, formatDateRange } from '@/lib/format-date';
 import { Button } from '@/components/ui/button';
 import {
   AlertCircle,
@@ -31,11 +32,6 @@ interface Period {
 const QUARTER_NAMES = ['', 'Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4'];
 const SEM_LABELS: Record<number, string> = { 1: '1st Sem', 2: '1st Sem', 3: '2nd Sem', 4: '2nd Sem' };
 
-function fmt(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 export default function AcademicPeriodPage() {
   const [periods, setPeriods]         = useState<Period[]>([]);
   const [schoolYear, setSchoolYear]   = useState<string>('');
@@ -51,14 +47,15 @@ export default function AcademicPeriodPage() {
   const [newSY, setNewSY]                   = useState('');
   const [startingYear, setStartingYear]     = useState(false);
 
-  const activePeriod = periods.find(p => p.isActive);
-
   // The quarter the system is actually showing everyone right now, computed
-  // from dates — may differ from `activePeriod` (the manually-toggled flag)
-  // during the gap between two quarters.
+  // from dates — may differ from the manually-toggled is_active flag.
   const effectivePeriod =
     periods.find(p => p.status === 'active') ??
     [...periods].reverse().find(p => p.status === 'ended');
+
+  // Buttons follow the same date-driven quarter the server uses (getActivePeriod);
+  // the raw flag is only a fallback when no quarter has dates yet.
+  const activePeriod = effectivePeriod ?? periods.find(p => p.isActive);
 
   const load = async (sy?: string) => {
     setLoading(true);
@@ -66,7 +63,7 @@ export default function AcademicPeriodPage() {
     try {
       const url = sy ? `/api/admin/academic-periods?schoolYear=${encodeURIComponent(sy)}` : '/api/admin/academic-periods';
       const res  = await fetch(url);
-      const data = await res.json() as { success: boolean; data?: Period[]; schoolYear?: string; error?: string };
+      const data = await res.json() as { success: boolean; data?: Period[]; schoolYear?: string; nextSchoolYear?: string; error?: string };
       if (data.success) {
         setNoActiveSY(false);
         setPeriods(data.data ?? []);
@@ -79,6 +76,7 @@ export default function AcademicPeriodPage() {
       } else if (!data.success && (res.status === 404 || data.error?.includes('No active school year'))) {
         // No active school year — expected state after end-of-year
         setNoActiveSY(true);
+        setNewSY(data.nextSchoolYear ?? '');
         setPeriods([]);
         setSchoolYear('');
       } else {
@@ -170,14 +168,14 @@ export default function AcademicPeriodPage() {
   };
 
   const handleStartNewYear = async () => {
-    if (!newSY.trim()) return;
     setStartingYear(true);
     setFeedback(null);
     try {
+      // No year sent: the server starts the one after the latest on record
       const res = await fetch('/api/admin/academic-periods', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schoolYear: newSY.trim() }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (data.success) {
@@ -223,7 +221,11 @@ export default function AcademicPeriodPage() {
     );
   }
 
-  const nextQuarter = activePeriod && activePeriod.quarter < 4 ? activePeriod.quarter + 1 : null;
+  // Advance is only a manual override for undated quarters; with dates set it
+  // would change nothing (dates win), so the button is hidden.
+  const currentHasDates = !!(activePeriod?.startDate && activePeriod?.endDate);
+  const nextQuarter =
+    activePeriod && activePeriod.quarter < 4 && !currentHasDates ? activePeriod.quarter + 1 : null;
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl mx-auto">
@@ -306,24 +308,15 @@ export default function AcademicPeriodPage() {
             <p className="text-base font-semibold text-gray-900">No active school year</p>
             <p className="text-sm text-gray-500 mt-1">The previous school year has ended. Start a new one to re-open enrollment and grade entry.</p>
           </div>
-          <div className="flex items-center justify-center gap-2 max-w-xs mx-auto">
-            <input
-              type="text"
-              value={newSY}
-              onChange={(e) => setNewSY(e.target.value)}
-              placeholder="e.g. 2026-2027"
-              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-            />
-            <Button
-              onClick={handleStartNewYear}
-              disabled={startingYear || !newSY.trim()}
-              className="bg-primary hover:bg-primary/90 text-white shrink-0"
-            >
-              {startingYear
-                ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Starting…</>
-                : 'Start Year'}
-            </Button>
-          </div>
+          <Button
+            onClick={handleStartNewYear}
+            disabled={startingYear}
+            className="bg-primary hover:bg-primary/90 text-white"
+          >
+            {startingYear
+              ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Starting…</>
+              : `Start School Year${newSY ? ` ${newSY}` : ''}`}
+          </Button>
         </div>
       )}
 
@@ -367,7 +360,7 @@ export default function AcademicPeriodPage() {
                         </span>
                       </p>
                       <p className={`text-xs ${isLive ? 'text-gray-400' : isEndedGap ? 'text-amber-700' : 'text-gray-400'}`}>
-                        {fmt(period.startDate)} – {fmt(period.endDate)}
+                        {formatDateRange(period.startDate, period.endDate)}
                       </p>
                     </div>
                   </div>
@@ -477,7 +470,7 @@ export default function AcademicPeriodPage() {
                   <div className="px-5 pb-4">
                     <div className="flex items-center gap-1.5 text-xs text-amber-700">
                       <Clock className="w-3.5 h-3.5" />
-                      {QUARTER_NAMES[period.quarter]} ended on {fmt(period.endDate)}. No quarter is active yet — grade entry and enrollment are paused until the next quarter starts.
+                      {QUARTER_NAMES[period.quarter]} ended on {formatDate(period.endDate)}. No quarter is active yet — grade entry and enrollment are paused until the next quarter starts.
                     </div>
                   </div>
                 )}

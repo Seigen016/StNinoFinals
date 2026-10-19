@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/format-date';
 import { GenderCell } from '@/components/admin/gender-cell';
 import { AddressData, AddressSelector } from '@/components/ui/address-selector';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { latestBirthYear } from '@/lib/person';
 import { useAuth } from '../hooks/useAuth';
 
 interface Student {
@@ -322,7 +324,7 @@ export default function StudentManagementPage() {
     const missing: string[] = [];
     if (!newStudent.first_name.trim()) missing.push('First Name');
     if (!newStudent.last_name.trim()) missing.push('Last Name');
-    if (!newStudent.student_number.trim()) missing.push('Student Number');
+    if (!/^\d{12}$/.test(newStudent.student_number)) missing.push('LRN (12 digits)');
     if (!newStudent.grade_level) missing.push('Grade Level');
     if (!newStudent.gender) missing.push('Gender');
     if (!newStudent.email.trim()) missing.push('Email');
@@ -405,6 +407,7 @@ export default function StudentManagementPage() {
     const missing: string[] = [];
     if (!editStudent.first_name.trim()) missing.push('First Name');
     if (!editStudent.last_name.trim()) missing.push('Last Name');
+    if (!/^\d{12}$/.test(editStudent.student_number || '')) missing.push('LRN (12 digits)');
     if (!editStudent.grade_level) missing.push('Grade Level');
     if (!editStudent.email.trim()) missing.push('Email');
     if (missing.length) {
@@ -676,7 +679,7 @@ export default function StudentManagementPage() {
                       />
                     </div>
                     <div>
-                      <Label required>Student Number</Label>
+                      <Label required>LRN</Label>
                       <Input
                         value={newStudent.student_number}
                         placeholder="e.g. 202400000001"
@@ -817,6 +820,7 @@ export default function StudentManagementPage() {
                         onChange={(v) =>
                           setNewStudent({ ...newStudent, date_of_birth: v })
                         }
+                        toYear={latestBirthYear()}
                         placeholder="Select date of birth"
                       />
                     </div>
@@ -972,7 +976,7 @@ export default function StudentManagementPage() {
                 />
               </div>
               <div>
-                <Label required>Student Number</Label>
+                <Label required>LRN</Label>
                 <Input
                   value={editStudent.student_number}
                   inputMode="numeric"
@@ -1108,6 +1112,7 @@ export default function StudentManagementPage() {
                   onChange={(v) =>
                     setEditStudent({ ...editStudent, date_of_birth: v })
                   }
+                  toYear={latestBirthYear()}
                   placeholder="Select date of birth"
                 />
               </div>
@@ -1258,7 +1263,7 @@ export default function StudentManagementPage() {
                 </div>
                 <div className="pb-3 border-b">
                   <h3 className="text-sm font-medium text-gray-500 mb-1">
-                    Student Number
+                    LRN
                   </h3>
                   <p className="text-base font-mono">
                     {selectedStudent.student_number}
@@ -1321,7 +1326,7 @@ export default function StudentManagementPage() {
                     Date of Birth
                   </h3>
                   <p className="text-base">
-                    {selectedStudent.date_of_birth || 'N/A'}
+                    {formatDate(selectedStudent.date_of_birth, 'N/A')}
                   </p>
                 </div>
                 <div className="pb-3 border-b">
@@ -1427,7 +1432,7 @@ export default function StudentManagementPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                    Student No.
+                    LRN
                   </th>
                   <SortHeader
                     label="Name"

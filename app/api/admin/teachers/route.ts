@@ -1,3 +1,4 @@
+import { NAME_FIELDS, nameCaseFields } from '@/lib/person';
 import { EmailService } from '@/lib/services/email-service';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const admin = getSupabaseAdmin();
-    const body = await request.json();
+    const body = nameCaseFields(await request.json(), NAME_FIELDS);
 
     const {
       first_name,
